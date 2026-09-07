@@ -4,6 +4,9 @@
 //   2) GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN —
 //      OAuth от своего приложения (как сделано для Яндекса).
 // Свойство сайта берётся из sites.json (поле gsc, напр. "sc-domain:cosmodesk.ru").
+// Ключ сервис-аккаунта можно задать per-site полем gscKey (путь к json) —
+// чтобы проекты на одном сервере не пересекались одним аккаунтом;
+// без него берётся общий GSC_SERVICE_ACCOUNT из .env.
 // Результат — data/gsc/<site>-<date>.json.
 import { readFileSync } from 'node:fs';
 import { createSign } from 'node:crypto';
@@ -12,9 +15,9 @@ import { loadSites, loadEnv, saveData } from './lib.mjs';
 loadEnv();
 
 const b64url = (s) => Buffer.from(s).toString('base64url');
+const tokenCache = new Map();
 
-async function getAccessToken() {
-  const saPath = process.env.GSC_SERVICE_ACCOUNT;
+async function getAccessToken(saPath) {
   if (saPath) {
     const sa = JSON.parse(readFileSync(saPath, 'utf8'));
     const now = Math.floor(Date.now() / 1000);
@@ -54,13 +57,13 @@ async function getAccessToken() {
   return null;
 }
 
-const token = await getAccessToken();
-if (!token) {
-  console.log('[gsc] не настроено (нужен GSC_SERVICE_ACCOUNT или GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN) — пропускаю');
-  process.exit(0);
+async function tokenFor(site) {
+  const saPath = site.gscKey || process.env.GSC_SERVICE_ACCOUNT || '';
+  if (!tokenCache.has(saPath)) tokenCache.set(saPath, await getAccessToken(saPath || undefined));
+  return tokenCache.get(saPath);
 }
 
-async function query(siteProperty, body) {
+async function query(token, siteProperty, body) {
   const res = await fetch(
     `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteProperty)}/searchAnalytics/query`,
     {
@@ -81,13 +84,18 @@ const start = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
 for (const site of loadSites()) {
   if (!site.gsc) continue;
   try {
-    const byQuery = await query(site.gsc, {
+    const token = await tokenFor(site);
+    if (!token) {
+      console.log(`[gsc] ${site.name}: не настроено (нужен gscKey в sites.json, GSC_SERVICE_ACCOUNT или GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN) — пропускаю`);
+      continue;
+    }
+    const byQuery = await query(token, site.gsc, {
       startDate: start,
       endDate: end,
       dimensions: ['query', 'page'],
       rowLimit: 2000,
     });
-    const byDate = await query(site.gsc, { startDate: start, endDate: end, dimensions: ['date'] });
+    const byDate = await query(token, site.gsc, { startDate: start, endDate: end, dimensions: ['date'] });
     const rows = (byQuery.rows ?? []).map((r) => ({
       query: r.keys[0],
       page: r.keys[1],

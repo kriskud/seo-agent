@@ -23,6 +23,11 @@
                "gsc": "sc-domain:cosmodesk.ru", "yandex": true, "indexnow": true } ] }
 ```
 
+Если на сервере несколько проектов, которые не должны пересекаться одним
+Google-аккаунтом, у каждого сайта укажите свой сервис-аккаунт полем
+`"gscKey": "/etc/seo-agent/gsc-<site>.json"` — общий `GSC_SERVICE_ACCOUNT`
+из `.env` остаётся фолбэком.
+
 `.env` (chmod 600, не в git):
 
 ```
