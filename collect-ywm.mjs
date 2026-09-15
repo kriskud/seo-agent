@@ -66,12 +66,13 @@ for (const site of loadSites()) {
   }
 
   const out = { host_id: host.host_id, host_url: host.ascii_host_url };
+  const base = `/user/${user_id}/hosts/${host.host_id}`;
 
-  out.summary = await api(`/user/${user_id}/hosts/${host.host_id}/summary`);
+  out.summary = await api(`${base}/summary`);
 
   try {
     const q = await api(
-      `/user/${user_id}/hosts/${host.host_id}/search-queries/popular/?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION`
+      `${base}/search-queries/popular/?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION`
     );
     out.queries = (q.queries ?? []).map((it) => ({
       query: it.query_text,
@@ -83,8 +84,60 @@ for (const site of loadSites()) {
     out.queriesError = e.message;
   }
 
+  // Диагностика: коды проблем/рекомендаций (summary отдаёт только счётчики по severity).
+  try {
+    const d = await api(`${base}/diagnostics/`);
+    out.problems = Object.entries(d.problems ?? {})
+      .filter(([, p]) => p.state !== 'ABSENT')
+      .map(([code, p]) => ({ code, severity: p.severity, since: p.last_state_update ?? null }));
+  } catch (e) {
+    out.problemsError = e.message;
+  }
+
+  // История обхода за 14 дней: API группирует по коду ответа (HTTP_2XX и т.п.),
+  // значение — сколько страниц робот загрузил за день; суммируем за период.
+  try {
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const from = new Date(Date.now() - 14 * 864e5);
+    const h = await api(`${base}/indexing/history/?date_from=${iso(from)}&date_to=${iso(new Date())}`);
+    out.indexing = Object.fromEntries(
+      Object.entries(h.indicators ?? {}).map(([k, points]) => {
+        const p = [...points].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        return [k, {
+          total: p.reduce((sum, x) => sum + (x.value ?? 0), 0),
+          lastDate: p.findLast((x) => x.value > 0)?.date?.slice(0, 10) ?? null,
+        }];
+      })
+    );
+  } catch (e) {
+    out.indexingError = e.message;
+  }
+
+  // Примеры страниц из базы робота (последние обойденные) и страниц в поиске.
+  try {
+    const s = await api(`${base}/indexing/samples/?offset=0&limit=50`);
+    out.crawlSamples = (s.samples ?? []).map((x) => ({
+      url: x.url,
+      code: x.http_code ?? x.status ?? null,
+      date: (x.access_date ?? '').slice(0, 10) || null,
+    }));
+  } catch (e) {
+    out.crawlSamplesError = e.message;
+  }
+
+  try {
+    const s = await api(`${base}/search-urls/in-search/samples/?offset=0&limit=50`);
+    out.inSearch = (s.samples ?? []).map((x) => ({
+      url: x.url,
+      title: x.title ?? null,
+      lastAccess: (x.last_access ?? '').slice(0, 10) || null,
+    }));
+  } catch (e) {
+    out.inSearchError = e.message;
+  }
+
   const file = saveData('ywm', site.name, out);
   console.log(
-    `[ywm] ${site.name}: ИКС=${out.summary?.sqi ?? '?'}, в поиске=${out.summary?.searchable_pages_count ?? '?'}, исключено=${out.summary?.excluded_pages_count ?? '?'}, запросов=${out.queries?.length ?? 0} → ${file}`
+    `[ywm] ${site.name}: ИКС=${out.summary?.sqi ?? '?'}, в поиске=${out.summary?.searchable_pages_count ?? '?'}, исключено=${out.summary?.excluded_pages_count ?? '?'}, запросов=${out.queries?.length ?? 0}, проблем=${out.problems?.length ?? '?'} → ${file}`
   );
 }

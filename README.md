@@ -9,7 +9,7 @@
 |---|---|
 | `audit.mjs` | Технический аудит по sitemap: title/meta/canonical/H1/noindex, битые внутренние ссылки, orphan-страницы |
 | `collect-gsc.mjs` | Search Console API → клики/показы/позиции по query+page |
-| `collect-ywm.mjs` | Яндекс.Вебмастер API → ИКС, страницы в поиске, популярные запросы (сайты с `yandex: true`) |
+| `collect-ywm.mjs` | Яндекс.Вебмастер API → ИКС, страницы в поиске, популярные запросы, диагностика (проблемы/рекомендации), статистика обхода (сайты с `yandex: true`) |
 | `indexnow.mjs` | Пинг IndexNow (Яндекс/Bing) списком URL или всем sitemap (сайты с `indexnow: true`) |
 | `report.mjs` | Markdown-отчёт с дельтами к прошлой неделе и SEO-возможностями → `reports/` |
 | `run-weekly.sh` | Полный прогон (его дёргает `seo-agent.timer`) |
