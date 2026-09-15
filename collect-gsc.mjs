@@ -78,8 +78,11 @@ async function query(token, siteProperty, body) {
 }
 
 // GSC отдаёт данные с лагом ~2 дня; берём 28 дней.
-const end = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
-const start = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+const day = 864e5;
+const iso = (t) => new Date(t).toISOString().slice(0, 10);
+const endT = Date.now() - 2 * day;
+const end = iso(endT);
+const start = iso(endT - 28 * day);
 
 for (const site of loadSites()) {
   if (!site.gsc) continue;
@@ -96,6 +99,24 @@ for (const site of loadSites()) {
       rowLimit: 2000,
     });
     const byDate = await query(token, site.gsc, { startDate: start, endDate: end, dimensions: ['date'] });
+
+    // Тренды: два соседних окна по 14 дней (только query) — по ним отчёт
+    // находит падающие и растущие запросы.
+    const win = async (s, e) =>
+      ((await query(token, site.gsc, { startDate: s, endDate: e, dimensions: ['query'], rowLimit: 1000 })).rows ?? []).map((r) => ({
+        query: r.keys[0],
+        clicks: r.clicks,
+        impressions: r.impressions,
+        position: r.position,
+      }));
+    const curStart = iso(endT - 13 * day);
+    const prevEnd = iso(endT - 14 * day);
+    const prevStart = iso(endT - 27 * day);
+    const trend = {
+      current: { start: curStart, end, rows: await win(curStart, end) },
+      previous: { start: prevStart, end: prevEnd, rows: await win(prevStart, prevEnd) },
+    };
+
     const rows = (byQuery.rows ?? []).map((r) => ({
       query: r.keys[0],
       page: r.keys[1],
@@ -115,7 +136,7 @@ for (const site of loadSites()) {
       (a, d) => ({ clicks: a.clicks + d.clicks, impressions: a.impressions + d.impressions }),
       { clicks: 0, impressions: 0 }
     );
-    const file = saveData('gsc', site.name, { property: site.gsc, start, end, totals, daily, rows });
+    const file = saveData('gsc', site.name, { property: site.gsc, start, end, totals, daily, rows, trend });
     console.log(`[gsc] ${site.name}: ${totals.clicks} кликов, ${totals.impressions} показов, ${rows.length} строк query+page → ${file}`);
   } catch (e) {
     console.error(`[gsc] ${site.name}: ${e.message}`);

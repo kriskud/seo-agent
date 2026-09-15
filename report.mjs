@@ -90,6 +90,39 @@ for (const site of loadSites()) {
     } else {
       lines.push('Возможностей с заметными показами пока нет (мало данных).', '');
     }
+
+    // Падающие/растущие запросы: сравнение двух окон по 14 дней из collect-gsc.
+    if (gsc.trend) {
+      const prev = new Map(gsc.trend.previous.rows.map((r) => [r.query, r]));
+      const cur = new Map(gsc.trend.current.rows.map((r) => [r.query, r]));
+      const movers = [];
+      for (const [q, c] of cur) {
+        const p = prev.get(q) ?? null;
+        movers.push({ query: q, dClicks: c.clicks - (p?.clicks ?? 0), dImp: c.impressions - (p?.impressions ?? 0), cur: c, prev: p });
+      }
+      for (const [q, p] of prev) {
+        if (!cur.has(q)) movers.push({ query: q, dClicks: -p.clicks, dImp: -p.impressions, cur: null, prev: p });
+      }
+      const notable = movers.filter((m) => Math.abs(m.dClicks) >= 1 || Math.abs(m.dImp) >= 5);
+      const pos = (r) => (r ? r.position.toFixed(1) : '—');
+      const sign = (n) => (n > 0 ? `+${n}` : `${n}`);
+      const row = (m) => `| ${m.query} | ${sign(m.dClicks)} | ${sign(m.dImp)} | ${pos(m.prev)} → ${pos(m.cur)} |`;
+      const falling = notable.filter((m) => m.dClicks < 0 || (m.dClicks === 0 && m.dImp < 0)).sort((a, b) => a.dClicks - b.dClicks || a.dImp - b.dImp).slice(0, 10);
+      const rising = notable.filter((m) => m.dClicks > 0 || (m.dClicks === 0 && m.dImp > 0)).sort((a, b) => b.dClicks - a.dClicks || b.dImp - a.dImp).slice(0, 10);
+      if (falling.length || rising.length) {
+        lines.push(`### Динамика запросов (${gsc.trend.current.start}…${gsc.trend.current.end} к предыдущим 14 дням)`, '');
+        if (falling.length) {
+          lines.push('**Падающие**', '', '| Запрос | Δ клики | Δ показы | Позиция |', '|---|---|---|---|');
+          falling.forEach((m) => lines.push(row(m)));
+          lines.push('');
+        }
+        if (rising.length) {
+          lines.push('**Растущие**', '', '| Запрос | Δ клики | Δ показы | Позиция |', '|---|---|---|---|');
+          rising.forEach((m) => lines.push(row(m)));
+          lines.push('');
+        }
+      }
+    }
   } else if (site.gsc) {
     lines.push('## Google Search Console', '', '_Нет данных — коллектор не настроен или не отработал._', '');
   }
