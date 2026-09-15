@@ -8,4 +8,5 @@ echo "=== seo-agent weekly run: $(date -Iseconds) ==="
 node audit.mjs || echo "audit.mjs failed ($?)"
 node collect-gsc.mjs || echo "collect-gsc.mjs failed ($?)"
 node collect-ywm.mjs || echo "collect-ywm.mjs failed ($?)"
+node indexnow.mjs || echo "indexnow.mjs failed ($?)"
 node report.mjs
