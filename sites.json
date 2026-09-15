@@ -1,1 +1,2 @@
-{ "sites": [ { "name": "cosmodesk", "url": "https://cosmodesk.ru", "gsc": "sc-domain:cosmodesk.ru", "yandex": true, "indexnow": true } ] }
+{ "sites": [ { "name": "cosmodesk", "url": "https://cosmodesk.ru", "gsc": "sc-domain:cosmodesk.ru", "yandex": true, "indexnow": true,
+               "accessLog": "/srv/logs/cosm/nginx.access.log", "logHost": "cosmodesk.ru" } ] }

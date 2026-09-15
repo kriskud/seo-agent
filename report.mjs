@@ -189,6 +189,33 @@ for (const site of loadSites()) {
     lines.push('## Яндекс.Вебмастер', '', '_Нет данных — коллектор не настроен или не отработал._', '');
   }
 
+  const [ai, prevAi] = loadLastTwo('aibots', site.name);
+  if (ai) {
+    lines.push(`## AI-видимость (логи сервера, ${ai.windowDays} дней)`, '');
+    const botHits = Object.values(ai.bots).reduce((s, b) => s + b.hits, 0);
+    const refHits = Object.values(ai.referrals).reduce((s, b) => s + b.hits, 0);
+    if (!botHits && !refHits) {
+      lines.push(`AI-краулеры не заходили, переходов из AI-сервисов нет (всего запросов: ${fmt(ai.requests)}).`, '');
+    } else {
+      if (botHits) {
+        lines.push('### AI-краулеры', '', '| Бот | Визиты | Последний | Топ страниц |', '|---|---|---|---|');
+        for (const [name, b] of Object.entries(ai.bots)) {
+          lines.push(`| ${name} | ${fmt(b.hits)}${delta(b.hits, prevAi?.bots?.[name]?.hits)} | ${b.lastDate} | ${b.topPages.slice(0, 3).join(', ')} |`);
+        }
+        lines.push('');
+      }
+      if (refHits) {
+        lines.push('### Переходы из AI-сервисов', '', '| Источник | Переходы | Последний | Топ страниц |', '|---|---|---|---|');
+        for (const [name, r] of Object.entries(ai.referrals)) {
+          lines.push(`| ${name} | ${fmt(r.hits)}${delta(r.hits, prevAi?.referrals?.[name]?.hits)} | ${r.lastDate} | ${r.topPages.slice(0, 3).join(', ')} |`);
+        }
+        lines.push('');
+      } else {
+        lines.push('Переходов из AI-сервисов нет.', '');
+      }
+    }
+  }
+
   const dir = join(ROOT, 'reports');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${site.name}-${today()}.md`);
