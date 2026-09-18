@@ -282,3 +282,7 @@ Yandex/VK используют общий URL-dedupe и поле `sources`, со
 для обязательной проверки: [Phase 2](seeding/PHASE2.md).
 
 Локальные проверки обеих фаз: `node --test seeding/*.test.mjs`.
+
+Найденные VK-сообщества и основания отбора: [VK sources](seeding/VK-SOURCES.md),
+машиночитаемый список — `seeding/config/vk-candidates.json`. Неподтверждённые
+numeric IDs не попадают в рабочий allowlist `vk.json`.
