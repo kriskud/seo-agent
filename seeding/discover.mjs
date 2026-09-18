@@ -31,11 +31,11 @@ export function planSearches(config, rotation = 0) {
   return [...new Map(plan.map(x => [JSON.stringify(x), x])).values()].slice(0, config.maxQueries);
 }
 
-export async function discover({ config, provider, store, now = new Date(), onError = () => {} }) {
+export async function discover({ config, provider, store, now = new Date(), onError = () => {}, searchPlan, rotationKey = 'rotation' }) {
   validateConfig(config);
   if (config.minResultDate && config.minResultDate > now.toISOString().slice(0, 10)) throw new Error('minResultDate is in the future');
   const rows = new Map(store.opportunities.map(row => [row.canonicalUrl, structuredClone(row)]));
-  const plan = planSearches(config, store.rotation);
+  const plan = searchPlan ?? planSearches(config, store.rotation);
   const summary = { queriesPlanned: plan.length, queriesExecuted: 0, queriesSucceeded: 0, apiRequests: 0,
     resultsReceived: 0, newOpportunities: 0, duplicatesSkipped: 0, errors: 0, invalidResults: 0,
     cacheHits: 0, limitReached: false, resetsAt: null };
@@ -71,6 +71,8 @@ export async function discover({ config, provider, store, now = new Date(), onEr
       if (existing) {
         existing.lastSeenAt = row.lastSeenAt;
         existing.matchedQueries = [...new Set([...existing.matchedQueries, search.query])];
+        existing.sources = [...new Set([...(existing.sources ?? [existing.source]), row.source])];
+        if (!existing.publishedAt && row.publishedAt) existing.publishedAt = row.publishedAt;
         summary.duplicatesSkipped++;
       } else { rows.set(row.canonicalUrl, row); summary.newOpportunities++; }
       preview.set(row.canonicalUrl, rows.get(row.canonicalUrl));
@@ -80,14 +82,17 @@ export async function discover({ config, provider, store, now = new Date(), onEr
   summary.cacheHits = (provider.cacheHits ?? 0) - initialCacheHits;
   return {
     summary, preview: [...preview.values()],
-    store: { ...store, rotation: store.rotation + (summary.errors === 0 && !summary.limitReached ? 1 : 0), opportunities: [...rows.values()] },
+    store: { ...store, [rotationKey]: (store[rotationKey] ?? 0) + (summary.queriesSucceeded > 0 && summary.errors === 0 && !summary.limitReached ? 1 : 0), opportunities: [...rows.values()] },
   };
 }
 
-export async function runDiscovery({ config, provider, file, dryRun = false, now = new Date(), onError }) {
+export async function runDiscovery({ config, provider, file, dryRun = false, now = new Date(), onError,
+  makePlan, rotationKey = 'rotation' }) {
   const release = dryRun ? () => {} : acquireLock(file);
   try {
-    const out = await discover({ config, provider, store: readStore(file), now, onError });
+    const store = readStore(file);
+    const out = await discover({ config, provider, store, now, onError,
+      searchPlan: makePlan?.(store), rotationKey });
     out.saved = !dryRun && out.summary.queriesSucceeded > 0;
     if (out.saved) writeStore(file, out.store);
     return out;

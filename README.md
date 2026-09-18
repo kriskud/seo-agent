@@ -268,3 +268,17 @@ node --check seeding/providers/yandex.mjs
 Telegram credentials запрещены в общем `.env`, git, логах и CLI arguments.
 Сначала пользователь проверяет proposed storage, permissions и systemd unit;
 только затем можно подключать существующую сессию. Telegram сейчас не реализован.
+
+## Phase 2: VK foundation и review Telegram
+
+В CosmoDesk-ветке добавлен отдельный `node seeding/discover-vk.mjs [--dry-run]`.
+VK выключен, allowlist пуст; сообщества сначала обнаруживаются через Yandex,
+затем добавляются вручную. При пустом списке API не вызывается и token не нужен.
+Yandex/VK используют общий URL-dedupe и поле `sources`, сохраняя старое `source`.
+
+В `seeding/config/telegram-sources.json` записаны 10 выбранных Telegram-источников
+только для monitoring/discovery; posting/replying запрещены. Listener не реализован,
+сессия не подключена. Предложение user/storage/permissions и полный systemd unit
+для обязательной проверки: [Phase 2](seeding/PHASE2.md).
+
+Локальные проверки обеих фаз: `node --test seeding/*.test.mjs`.

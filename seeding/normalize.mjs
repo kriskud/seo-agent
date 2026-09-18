@@ -28,7 +28,7 @@ export function normalizeResult(result, { project, source, query, discoveredAt }
   const canonicalUrl = canonicalizeUrl(result.url);
   return {
     id: createHash('sha256').update(project + '\n' + canonicalUrl).digest('hex'),
-    project, source, platform: detectPlatform(canonicalUrl), url: result.url, canonicalUrl,
+    project, source, sources: [source], platform: detectPlatform(canonicalUrl), url: result.url, canonicalUrl,
     title: result.title ?? '', snippet: result.snippet ?? '', query, matchedQueries: [query],
     domain: new URL(canonicalUrl).hostname,
     publishedAt: result.publishedAt ?? null,
