@@ -101,8 +101,8 @@ export async function runDiscovery({ config, provider, file, dryRun = false, now
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.includes('--help')) { console.log('Usage: node seeding/discover.mjs [--dry-run]'); return; }
-  if (args.some(a => a !== '--dry-run')) throw new Error('Unknown argument. Use --help.');
+  if (args.includes('--help')) { console.log('Usage: node seeding/discover.mjs [--dry-run] [--verbose]'); return; }
+  if (args.some(a => a !== '--dry-run' && a !== '--verbose')) throw new Error('Unknown argument. Use --help.');
   const dryRun = args.includes('--dry-run');
   const config = JSON.parse(readFileSync(join(ROOT, 'seeding/config/cosmodesk.json'), 'utf8'));
   validateConfig(config);
@@ -117,8 +117,9 @@ async function main() {
     errors: 'Errors', invalidResults: 'Invalid results', cacheHits: 'Cache hits' };
   for (const [key, label] of Object.entries(labels)) console.log(`${label}: ${out.summary[key]}`);
   if (out.summary.limitReached) console.log(`Daily limit reached. Search paused until ${out.summary.resetsAt}. Run again after that time.`);
-  if (dryRun) console.log('\nResults:\n' + JSON.stringify(out.preview, null, 2));
-  else if (out.saved) console.log(`\nStored: ${file}`);
+  if (args.includes('--verbose')) console.log('\nResults:\n' + JSON.stringify(out.preview, null, 2));
+  if (out.saved) console.log(`\nStored: ${file}`);
+  else if (!dryRun) console.log('\nNothing stored (no successful queries).');
   if (out.summary.errors) process.exitCode = 1;
 }
 
