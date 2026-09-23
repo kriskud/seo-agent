@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT } from '../lib.mjs';
+import { PROJECTS } from './discover.mjs';
 import { readStore, writeStore, acquireLock } from './storage.mjs';
 
 export const REVIEW_STATUSES = ['relevant', 'maybe', 'noise', 'discovered'];
@@ -243,13 +244,21 @@ export function createReviewServer({ file, config }) {
 
 function main() {
   const args = process.argv.slice(2);
-  if (args.includes('--help')) { console.log('Usage: node seeding/review.mjs [--port N]'); return; }
-  const portIndex = args.indexOf('--port');
-  const port = portIndex >= 0 ? Number(args[portIndex + 1]) : 8787;
-  const known = portIndex >= 0 ? args.slice(0, portIndex).concat(args.slice(portIndex + 2)) : args;
-  if (known.length || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Unknown argument. Use --help.');
-  const config = JSON.parse(readFileSync(join(ROOT, 'seeding/config/cosmodesk.json'), 'utf8'));
-  const file = join(ROOT, 'data/seeding/cosmodesk.json');
+  const usage = `Usage: node seeding/review.mjs --project <${PROJECTS.join('|')}> [--port N]`;
+  if (args.includes('--help')) { console.log(usage); return; }
+  const take = flag => {
+    const i = args.indexOf(flag);
+    if (i < 0) return null;
+    const [value] = args.splice(i, 2).slice(1);
+    return value;
+  };
+  const project = take('--project');
+  const port = Number(take('--port') ?? 8787);
+  if (args.length || !PROJECTS.includes(project) || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error(usage);
+  const config = JSON.parse(readFileSync(join(ROOT, `seeding/config/${project}.json`), 'utf8'));
+  // scoreRow reads a flat query list; project configs keep queries in banks.
+  config.queries = (config.banks ?? []).flatMap(bank => bank.queries);
+  const file = join(ROOT, `data/seeding/${project}.json`);
   const server = createReviewServer({ file, config });
   server.listen(port, '127.0.0.1', () => {
     console.log(`Seeding review: http://127.0.0.1:${port}/ (localhost only)`);

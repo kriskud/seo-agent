@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 
 const platforms = { 'vk.com': 'vk', 'dzen.ru': 'dzen', 'otzovik.com': 'otzovik',
-  'irecommend.ru': 'irecommend', 'youtube.com': 'youtube', 'youtu.be': 'youtube', 't.me': 'telegram' };
+  'irecommend.ru': 'irecommend', 'youtube.com': 'youtube', 'youtu.be': 'youtube', 't.me': 'telegram',
+  'reddit.com': 'reddit', 'twoplustwo.com': 'twoplustwo', 'gipsyteam.ru': 'gipsyteam', 'pokeroff.ru': 'pokeroff' };
 export function detectPlatform(url) {
   const host = new URL(url).hostname;
   return Object.entries(platforms).find(([domain]) => host === domain || host.endsWith('.' + domain))?.[1] ?? 'web';
@@ -14,7 +15,9 @@ export function canonicalizeUrl(value) {
   // unknown fragments (some sites use hash routing or comment identities).
   const aliases = { 'm.vk.com': 'vk.com', 'www.vk.com': 'vk.com',
     'www.youtube.com': 'youtube.com', 'm.youtube.com': 'youtube.com',
-    'www.dzen.ru': 'dzen.ru', 'www.otzovik.com': 'otzovik.com', 'www.irecommend.ru': 'irecommend.ru' };
+    'www.dzen.ru': 'dzen.ru', 'www.otzovik.com': 'otzovik.com', 'www.irecommend.ru': 'irecommend.ru',
+    'www.reddit.com': 'reddit.com', 'old.reddit.com': 'reddit.com', 'np.reddit.com': 'reddit.com',
+    'www.pokeroff.ru': 'pokeroff.ru', 'www.gipsyteam.ru': 'gipsyteam.ru' };
   u.hostname = aliases[u.hostname] ?? u.hostname;
   for (const key of [...u.searchParams.keys()]) {
     if (/^(utm_.+|yclid|gclid|dclid|fbclid|msclkid|_openstat|ysclid|mc_cid|mc_eid)$/i.test(key)) u.searchParams.delete(key);

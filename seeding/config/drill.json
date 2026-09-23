@@ -1,0 +1,51 @@
+{
+  "project": "drill",
+  "freshnessDays": 7,
+  "minResultDate": null,
+  "maxQueries": 22,
+  "banks": [
+    {
+      "language": "ru",
+      "domains": ["gipsyteam.ru", "pokeroff.ru", "dzen.ru"],
+      "queries": [
+        "пуш фолд таблица",
+        "пуш фолд чарт",
+        "как играть пуш фолд",
+        "тренажёр покера",
+        "тренажёр префлопа",
+        "как тренировать покер",
+        "что такое ICM покер",
+        "игра коротким стеком турнир"
+      ],
+      "generalQueries": [
+        "пуш фолд таблица",
+        "тренажёр покера",
+        "как тренировать покер"
+      ]
+    },
+    {
+      "language": "en",
+      "domains": ["forumserver.twoplustwo.com", "reddit.com"],
+      "queries": [
+        "push fold chart",
+        "push fold trainer",
+        "how to practice push fold",
+        "preflop trainer",
+        "free poker trainer",
+        "how to study icm",
+        "nash push fold ranges",
+        "mdf poker explained"
+      ],
+      "generalQueries": [
+        "push fold trainer",
+        "preflop trainer",
+        "free poker trainer"
+      ]
+    }
+  ],
+  "reddit": {
+    "subreddits": ["poker"],
+    "keywords": ["push fold", "push/fold", "preflop chart", "trainer", "icm", "shove range", "study preflop", "practice preflop", "short stack"]
+  },
+  "competitors": ["gto wizard", "gtowizard", "dto poker", "snapshove", "icmizer", "preflop academy"]
+}

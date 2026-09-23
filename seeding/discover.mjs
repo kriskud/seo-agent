@@ -2,17 +2,26 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT, loadEnv } from '../lib.mjs';
-import { createYandexProvider } from './providers/yandex.mjs';
+import { createGoogleProvider } from './providers/google.mjs';
+import { createRedditRssProvider } from './providers/reddit-rss.mjs';
 import { normalizeResult } from './normalize.mjs';
 import { readStore, writeStore, acquireLock } from './storage.mjs';
 
+export const PROJECTS = ['floprooms', 'drill'];
+
 export function validateConfig(c) {
   const strings = a => Array.isArray(a) && a.length > 0 && a.every(s => typeof s === 'string' && s.trim());
-  if (c.project !== 'cosmodesk' || c.language !== 'ru' || !strings(c.queries) || !strings(c.domains)
-    || !Array.isArray(c.generalQueries) || !c.generalQueries.every(q => c.queries.includes(q))
-    || !c.domains.every(d => /^(?:[a-z0-9-]+\.)+[a-z]{2,}$/.test(d))
+  if (!PROJECTS.includes(c.project)
     || !Number.isInteger(c.freshnessDays) || c.freshnessDays < 1 || c.freshnessDays > 365
-    || !Number.isInteger(c.maxQueries) || c.maxQueries < 1 || c.maxQueries > 100) throw new Error('Invalid CosmoDesk seeding config');
+    || !Number.isInteger(c.maxQueries) || c.maxQueries < 1 || c.maxQueries > 100
+    || !Array.isArray(c.banks) || c.banks.length === 0) throw new Error('Invalid seeding config');
+  for (const b of c.banks) {
+    if (!['ru', 'en'].includes(b.language) || !strings(b.queries) || !strings(b.domains)
+      || !Array.isArray(b.generalQueries) || !b.generalQueries.every(q => b.queries.includes(q))
+      || !b.domains.every(d => /^(?:[a-z0-9-]+\.)+[a-z]{2,}$/.test(d))) throw new Error('Invalid seeding config bank');
+  }
+  if (c.reddit !== undefined && (!strings(c.reddit.subreddits) || !strings(c.reddit.keywords)
+    || !c.reddit.subreddits.every(s => /^[A-Za-z0-9_]{2,21}$/.test(s)))) throw new Error('Invalid reddit config');
   if (c.minResultDate !== null && (typeof c.minResultDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(c.minResultDate)
     || !Number.isFinite(Date.parse(c.minResultDate)) || new Date(c.minResultDate).toISOString().slice(0, 10) !== c.minResultDate)) {
     throw new Error('minResultDate must be null or YYYY-MM-DD');
@@ -20,22 +29,34 @@ export function validateConfig(c) {
 }
 
 export function planSearches(config, rotation = 0) {
-  const targeted = config.queries.map((query, i) => ({ query, domain: config.domains[(i + rotation) % config.domains.length] }));
-  const general = config.generalQueries.map(query => ({ query, domain: null }));
-  // Interleave general searches so a smaller budget still discovers new sites.
-  const plan = [];
-  for (let i = 0; i < Math.max(targeted.length, general.length); i++) {
-    if (targeted[i]) plan.push(targeted[i]);
-    if (general[i]) plan.push(general[i]);
+  const bankPlans = config.banks.map(bank => {
+    const targeted = bank.queries.map((query, i) => ({ query, domain: bank.domains[(i + rotation) % bank.domains.length], language: bank.language }));
+    const general = bank.generalQueries.map(query => ({ query, domain: null, language: bank.language }));
+    // Interleave general searches so a smaller budget still discovers new sites.
+    const plan = [];
+    for (let i = 0; i < Math.max(targeted.length, general.length); i++) {
+      if (targeted[i]) plan.push(targeted[i]);
+      if (general[i]) plan.push(general[i]);
+    }
+    return plan;
+  });
+  // Round-robin across banks so a small maxQueries still covers every language.
+  const merged = [];
+  for (let i = 0; i < Math.max(...bankPlans.map(p => p.length)); i++) {
+    for (const plan of bankPlans) if (plan[i]) merged.push(plan[i]);
   }
-  return [...new Map(plan.map(x => [JSON.stringify(x), x])).values()].slice(0, config.maxQueries);
+  return [...new Map(merged.map(x => [JSON.stringify(x), x])).values()].slice(0, config.maxQueries);
+}
+
+export function planRedditSweep(config) {
+  return (config.reddit?.subreddits ?? []).map(sub => ({ query: 'r/' + sub, domain: null, language: 'en' }));
 }
 
 export async function discover({ config, provider, store, now = new Date(), onError = () => {}, searchPlan, rotationKey = 'rotation' }) {
   validateConfig(config);
   if (config.minResultDate && config.minResultDate > now.toISOString().slice(0, 10)) throw new Error('minResultDate is in the future');
   const rows = new Map(store.opportunities.map(row => [row.canonicalUrl, structuredClone(row)]));
-  const plan = searchPlan ?? planSearches(config, store.rotation);
+  const plan = searchPlan ?? planSearches(config, store[rotationKey] ?? 0);
   const summary = { queriesPlanned: plan.length, queriesExecuted: 0, queriesSucceeded: 0, apiRequests: 0,
     resultsReceived: 0, newOpportunities: 0, duplicatesSkipped: 0, errors: 0, invalidResults: 0,
     cacheHits: 0, limitReached: false, resetsAt: null };
@@ -47,7 +68,7 @@ export async function discover({ config, provider, store, now = new Date(), onEr
     let results;
     try {
       results = await provider.search({ ...search, freshnessDays: config.freshnessDays,
-        minResultDate: config.minResultDate, language: config.language, now });
+        minResultDate: config.minResultDate, now });
       if (!Array.isArray(results)) throw new Error('Provider did not return an array');
     } catch (e) {
       if (e.code === 'SEARCH_BUDGET_EXHAUSTED') {
@@ -99,28 +120,49 @@ export async function runDiscovery({ config, provider, file, dryRun = false, now
   } finally { release(); }
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  if (args.includes('--help')) { console.log('Usage: node seeding/discover.mjs [--dry-run] [--verbose]'); return; }
-  if (args.some(a => a !== '--dry-run' && a !== '--verbose')) throw new Error('Unknown argument. Use --help.');
-  const dryRun = args.includes('--dry-run');
-  const config = JSON.parse(readFileSync(join(ROOT, 'seeding/config/cosmodesk.json'), 'utf8'));
-  validateConfig(config);
-  loadEnv();
-  const provider = createYandexProvider();
-  const file = join(ROOT, 'data/seeding/cosmodesk.json');
-  console.log(`CosmoDesk seeding discovery${dryRun ? ' (dry run — opportunities not saved; budget is recorded)' : ''}\n`);
-  console.log(`Daily HTTP request limit: ${provider.dailyLimit} (UTC)`);
-  const out = await runDiscovery({ config, provider, file, dryRun, onError: message => console.error(`[seeding] ${message}`) });
-  const labels = { queriesPlanned: 'Queries planned', queriesExecuted: 'Queries executed', apiRequests: 'API requests',
+function printSummary(name, summary) {
+  const labels = { queriesPlanned: 'Queries planned', queriesExecuted: 'Queries executed', apiRequests: 'HTTP requests',
     resultsReceived: 'Results received', newOpportunities: 'New opportunities', duplicatesSkipped: 'Duplicates skipped',
     errors: 'Errors', invalidResults: 'Invalid results', cacheHits: 'Cache hits' };
-  for (const [key, label] of Object.entries(labels)) console.log(`${label}: ${out.summary[key]}`);
-  if (out.summary.limitReached) console.log(`Daily limit reached. Search paused until ${out.summary.resetsAt}. Run again after that time.`);
-  if (args.includes('--verbose')) console.log('\nResults:\n' + JSON.stringify(out.preview, null, 2));
-  if (out.saved) console.log(`\nStored: ${file}`);
+  console.log(`\n[${name}]`);
+  for (const [key, label] of Object.entries(labels)) console.log(`${label}: ${summary[key]}`);
+  if (summary.limitReached) console.log(`Daily limit reached. Search paused until ${summary.resetsAt}. Run again after that time.`);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const usage = `Usage: node seeding/discover.mjs --project <${PROJECTS.join('|')}> [--dry-run] [--verbose]`;
+  if (args.includes('--help')) { console.log(usage); return; }
+  const projectIndex = args.indexOf('--project');
+  const project = projectIndex >= 0 ? args[projectIndex + 1] : null;
+  const rest = projectIndex >= 0 ? args.slice(0, projectIndex).concat(args.slice(projectIndex + 2)) : args;
+  if (!PROJECTS.includes(project) || rest.some(a => a !== '--dry-run' && a !== '--verbose')) throw new Error(usage);
+  const dryRun = args.includes('--dry-run');
+  const config = JSON.parse(readFileSync(join(ROOT, `seeding/config/${project}.json`), 'utf8'));
+  validateConfig(config);
+  if (config.project !== project) throw new Error(`Config project mismatch: ${config.project}`);
+  loadEnv();
+  const file = join(ROOT, `data/seeding/${project}.json`);
+  const onError = message => console.error(`[seeding] ${message}`);
+  console.log(`${project} seeding discovery${dryRun ? ' (dry run — opportunities not saved; budget is recorded)' : ''}`);
+  const google = createGoogleProvider();
+  console.log(`Daily Google request limit: ${google.dailyLimit} (UTC, shared across projects)`);
+  const previews = [];
+  let errors = 0, saved = false;
+  const out = await runDiscovery({ config, provider: google, file, dryRun, onError });
+  printSummary('google', out.summary);
+  errors += out.summary.errors; saved ||= out.saved; previews.push(...out.preview);
+  if (config.reddit) {
+    const reddit = createRedditRssProvider({ keywords: config.reddit.keywords });
+    const sweep = await runDiscovery({ config, provider: reddit, file, dryRun, onError,
+      makePlan: () => planRedditSweep(config), rotationKey: 'redditRotation' });
+    printSummary('reddit-rss', sweep.summary);
+    errors += sweep.summary.errors; saved ||= sweep.saved; previews.push(...sweep.preview);
+  }
+  if (args.includes('--verbose')) console.log('\nResults:\n' + JSON.stringify(previews, null, 2));
+  if (saved) console.log(`\nStored: ${file}`);
   else if (!dryRun) console.log('\nNothing stored (no successful queries).');
-  if (out.summary.errors) process.exitCode = 1;
+  if (errors) process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

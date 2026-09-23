@@ -1,0 +1,51 @@
+{
+  "project": "floprooms",
+  "freshnessDays": 7,
+  "minResultDate": null,
+  "maxQueries": 22,
+  "banks": [
+    {
+      "language": "ru",
+      "domains": ["gipsyteam.ru", "pokeroff.ru", "dzen.ru"],
+      "queries": [
+        "в каком руме играть",
+        "вывод денег покер рум",
+        "покер рум вывод крипта",
+        "ACR отзывы вывод",
+        "WPT Global отзывы",
+        "CoinPoker отзывы",
+        "kyc покер рум",
+        "покер румы для Азии"
+      ],
+      "generalQueries": [
+        "в каком руме играть",
+        "вывод денег покер рум",
+        "WPT Global отзывы"
+      ]
+    },
+    {
+      "language": "en",
+      "domains": ["forumserver.twoplustwo.com", "reddit.com"],
+      "queries": [
+        "acr withdrawal time",
+        "wpt global withdrawal",
+        "coinpoker legit",
+        "best crypto poker site",
+        "poker site kyc withdrawal",
+        "wpt global license",
+        "natural8 withdrawal",
+        "which poker site should I play"
+      ],
+      "generalQueries": [
+        "best crypto poker site",
+        "coinpoker legit",
+        "acr withdrawal time"
+      ]
+    }
+  ],
+  "reddit": {
+    "subreddits": ["poker", "onlinepoker"],
+    "keywords": ["withdrawal", "cash out", "cashout", "acr", "americas cardroom", "wpt global", "coinpoker", "natural8", "kyc", "crypto poker", "which site", "black chip", "betonline"]
+  },
+  "competitors": ["acr", "americas cardroom", "wpt global", "coinpoker", "natural8", "redstar", "stake", "betonline", "black chip", "gg"]
+}

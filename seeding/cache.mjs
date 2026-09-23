@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { ROOT } from '../lib.mjs';
 import { writeStore } from './storage.mjs';
 
-export function createSearchCache({ directory = join(ROOT, 'data/seeding/yandex-cache'),
+export function createSearchCache({ directory = join(ROOT, 'data/seeding/google-cache'),
   clock = () => Date.now(), ttlMs = 6 * 3600e3 } = {}) {
   const path = body => join(directory, createHash('sha256').update(body).digest('hex') + '.json');
   return {
