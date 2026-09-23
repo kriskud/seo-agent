@@ -154,6 +154,14 @@ test('Reddit feed parses entities, filters by keywords and freshness', async () 
   const blocked = createRedditRssProvider({ keywords: ['x'], fetchImpl: async () => new Response('', { status: 403 }) });
   await assert.rejects(blocked.search({ query: 'r/poker', now }), /Reddit HTTP 403/);
   assert.throws(() => createRedditRssProvider({ keywords: [] }), /keywords/);
+  let tries = 0; const waits = [];
+  const limited = createRedditRssProvider({ keywords: ['push fold'], wait: async ms => waits.push(ms),
+    fetchImpl: async () => ++tries === 1 ? new Response('', { status: 429 }) : new Response(atom) });
+  assert.equal((await limited.search({ query: 'r/poker', freshnessDays: 7, now })).length, 1);
+  assert.deepEqual(waits, [30000]); assert.equal(tries, 2);
+  const doubly = createRedditRssProvider({ keywords: ['x'], wait: async () => {},
+    fetchImpl: async () => new Response('', { status: 429 }) });
+  await assert.rejects(doubly.search({ query: 'r/poker', now }), /Reddit HTTP 429/);
 });
 
 test('persistent dedupe merges queries and preserves id, first-seen and future status', async t => {

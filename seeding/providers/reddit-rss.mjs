@@ -37,16 +37,22 @@ export function createRedditRssProvider({ keywords, fetchImpl = fetch, wait = sl
     async search({ query, freshnessDays = 7, minResultDate = null, now = new Date() }) {
       const sub = /^r\/([A-Za-z0-9_]{2,21})$/.exec(query)?.[1];
       if (!sub) throw new Error('Reddit search query must look like r/<subreddit>');
-      if (apiRequests) await wait(1100);
-      apiRequests++;
+      const fail = e => new Error(`Reddit feed r/${sub} failed: ${e.message}`);
       let text;
-      try {
-        const response = await fetchImpl(`https://www.reddit.com/r/${sub}/new.rss?limit=100`,
-          { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(timeoutMs) });
-        if (!response.ok) throw new Error(`Reddit HTTP ${response.status}`);
-        text = await response.text();
-      } catch (e) {
-        throw new Error(`Reddit feed r/${sub} failed: ${e.message}`);
+      // Datacenter IPs are rate-limited hard: generous pause between feeds,
+      // one long-backoff retry after 429.
+      for (let attempt = 0; ; attempt++) {
+        if (apiRequests) await wait(attempt ? 30_000 : 10_000);
+        apiRequests++;
+        let response;
+        try {
+          response = await fetchImpl(`https://www.reddit.com/r/${sub}/new.rss?limit=100`,
+            { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(timeoutMs) });
+        } catch (e) { throw fail(e); }
+        if (response.status === 429 && attempt === 0) continue;
+        if (!response.ok) throw fail(new Error(`Reddit HTTP ${response.status}`));
+        try { text = await response.text(); } catch (e) { throw fail(e); }
+        break;
       }
       const since = new Date(now.getTime() - freshnessDays * 864e5).toISOString();
       const lower = minResultDate && minResultDate > since.slice(0, 10) ? minResultDate : since;
