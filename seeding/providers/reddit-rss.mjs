@@ -39,10 +39,10 @@ export function createRedditRssProvider({ keywords, fetchImpl = fetch, wait = sl
       if (!sub) throw new Error('Reddit search query must look like r/<subreddit>');
       const fail = e => new Error(`Reddit feed r/${sub} failed: ${e.message}`);
       let text;
-      // Datacenter IPs are rate-limited hard: generous pause between feeds,
-      // one long-backoff retry after 429.
+      // Unauthenticated feeds allow roughly one request a minute per IP:
+      // minute-plus pause between feeds, one long-backoff retry after 429.
       for (let attempt = 0; ; attempt++) {
-        if (apiRequests) await wait(attempt ? 30_000 : 10_000);
+        if (apiRequests) await wait(attempt ? 120_000 : 65_000);
         apiRequests++;
         let response;
         try {

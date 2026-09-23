@@ -158,7 +158,7 @@ test('Reddit feed parses entities, filters by keywords and freshness', async () 
   const limited = createRedditRssProvider({ keywords: ['push fold'], wait: async ms => waits.push(ms),
     fetchImpl: async () => ++tries === 1 ? new Response('', { status: 429 }) : new Response(atom) });
   assert.equal((await limited.search({ query: 'r/poker', freshnessDays: 7, now })).length, 1);
-  assert.deepEqual(waits, [30000]); assert.equal(tries, 2);
+  assert.deepEqual(waits, [120000]); assert.equal(tries, 2);
   const doubly = createRedditRssProvider({ keywords: ['x'], wait: async () => {},
     fetchImpl: async () => new Response('', { status: 429 }) });
   await assert.rejects(doubly.search({ query: 'r/poker', now }), /Reddit HTTP 429/);
