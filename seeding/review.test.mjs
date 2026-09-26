@@ -28,11 +28,14 @@ test('applyStatus updates known rows, rejects unknown ids and statuses', () => {
   const now = new Date('2026-09-20T12:00:00Z');
   assert.equal(applyStatus(store, 'id1', 'relevant', now).reviewedAt, now.toISOString());
   assert.equal(store.opportunities[0].status, 'relevant');
+  assert.equal(applyStatus(store, 'id1', 'posted', now).postedAt, now.toISOString());
+  applyStatus(store, 'id1', 'relevant', now);
+  assert.equal(store.opportunities[0].postedAt, undefined);
   applyStatus(store, 'id1', 'discovered', now);
   assert.equal(store.opportunities[0].reviewedAt, undefined);
   assert.throws(() => applyStatus(store, 'missing', 'noise'), /Unknown/);
   assert.throws(() => applyStatus(store, 'id1', 'spam'), /Invalid/);
-  assert.deepEqual(REVIEW_STATUSES, ['relevant', 'maybe', 'noise', 'discovered']);
+  assert.deepEqual(REVIEW_STATUSES, ['relevant', 'maybe', 'noise', 'posted', 'discovered']);
 });
 
 test('host allowlist covers only this loopback origin', () => {
@@ -46,7 +49,7 @@ test('host allowlist covers only this loopback origin', () => {
 test('row view exposes triage fields without the whole stored record', () => {
   const view = rowView(row(), config);
   assert.deepEqual(Object.keys(view), ['id', 'score', 'platform', 'title', 'snippet',
-    'matchedQueries', 'domain', 'url', 'status', 'publishedAt', 'discoveredAt', 'draft', 'draftedAt']);
+    'matchedQueries', 'domain', 'url', 'status', 'publishedAt', 'discoveredAt', 'draft', 'draftedAt', 'postedAt']);
   assert.equal(view.draft, null);
 });
 
