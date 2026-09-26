@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { ROOT, loadEnv } from '../lib.mjs';
 import { createSerperProvider } from './providers/serper.mjs';
 import { createRedditRssProvider } from './providers/reddit-rss.mjs';
-import { normalizeResult } from './normalize.mjs';
+import { normalizeResult, isSeedableThread } from './normalize.mjs';
 import { readStore, writeStore, acquireLock } from './storage.mjs';
 
 export const PROJECTS = ['floprooms', 'drill'];
@@ -58,8 +58,8 @@ export async function discover({ config, provider, store, now = new Date(), onEr
   const rows = new Map(store.opportunities.map(row => [row.canonicalUrl, structuredClone(row)]));
   const plan = searchPlan ?? planSearches(config, store[rotationKey] ?? 0);
   const summary = { queriesPlanned: plan.length, queriesExecuted: 0, queriesSucceeded: 0, apiRequests: 0,
-    resultsReceived: 0, newOpportunities: 0, duplicatesSkipped: 0, errors: 0, invalidResults: 0,
-    cacheHits: 0, limitReached: false, resetsAt: null };
+    resultsReceived: 0, newOpportunities: 0, duplicatesSkipped: 0, nonThreadsSkipped: 0, errors: 0,
+    invalidResults: 0, cacheHits: 0, limitReached: false, resetsAt: null };
   const initialRequests = provider.apiRequests ?? 0;
   const initialCacheHits = provider.cacheHits ?? 0;
   const preview = new Map();
@@ -88,6 +88,7 @@ export async function discover({ config, provider, store, now = new Date(), onEr
         row = normalizeResult(result, { project: config.project, source: provider.name,
           query: search.query, discoveredAt: now.toISOString() });
       } catch { summary.invalidResults++; summary.errors++; continue; }
+      if (!isSeedableThread(row.canonicalUrl)) { summary.nonThreadsSkipped++; continue; }
       const existing = rows.get(row.canonicalUrl);
       if (existing) {
         existing.lastSeenAt = row.lastSeenAt;
@@ -123,7 +124,7 @@ export async function runDiscovery({ config, provider, file, dryRun = false, now
 function printSummary(name, summary) {
   const labels = { queriesPlanned: 'Queries planned', queriesExecuted: 'Queries executed', apiRequests: 'HTTP requests',
     resultsReceived: 'Results received', newOpportunities: 'New opportunities', duplicatesSkipped: 'Duplicates skipped',
-    errors: 'Errors', invalidResults: 'Invalid results', cacheHits: 'Cache hits' };
+    nonThreadsSkipped: 'Non-thread results skipped', errors: 'Errors', invalidResults: 'Invalid results', cacheHits: 'Cache hits' };
   console.log(`\n[${name}]`);
   for (const [key, label] of Object.entries(labels)) console.log(`${label}: ${summary[key]}`);
   if (summary.limitReached) console.log(`Daily limit reached. Search paused until ${summary.resetsAt}. Run again after that time.`);

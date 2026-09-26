@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { canonicalizeUrl, detectPlatform } from './normalize.mjs';
+import { canonicalizeUrl, detectPlatform, isSeedableThread } from './normalize.mjs';
 import { discover, runDiscovery, planSearches, planRedditSweep, validateConfig } from './discover.mjs';
 import { readStore, acquireLock } from './storage.mjs';
 import { createSerperProvider as realSerperProvider, buildBody, parseItems } from './providers/serper.mjs';
@@ -55,6 +55,25 @@ test('platform matching observes hostname boundaries', () => {
   }
 });
 
+test('non-thread pages are rejected, discussion threads pass', () => {
+  for (const [url, ok] of [
+    ['https://reddit.com/r/poker/comments/abc/push_fold/', true],
+    ['https://reddit.com/r/poker/', false],
+    ['https://forumserver.twoplustwo.com/290/coaches-amp-schools/', true],
+    ['https://forum.gipsyteam.ru/index.php?viewtopic=183057', true],
+    ['https://gipsyteam.ru/poker/zoom-poker', false],
+    ['https://pokeroff.ru/topic/1', true],
+    ['https://play.google.com/store/apps/details?id=com.icmtrainer', false],
+    ['https://apps.apple.com/np/app/runout-poker-trainer/id6760210288', false],
+    ['https://dzen.ru/a/xyz', false],
+    ['https://youtube.com/watch?v=1', false],
+    ['https://example.com/t/push-fold-help/42', true],
+    ['https://example.com/forum/viewtopic.php?t=9', true],
+    ['https://gtolab.com/', false],
+    ['https://bbzpoker.com/product/lex-bundle/', false],
+  ]) assert.equal(isSeedableThread(url), ok, url);
+});
+
 test('project configs are valid; both language banks fit maxQueries exactly', () => {
   for (const c of [drillConfig, flopConfig]) {
     validateConfig(c);
@@ -71,8 +90,8 @@ test('bounded plan rotates domains within each bank and dedupes general searches
   for (let rotation = 0; rotation < 6; rotation++) {
     for (const p of planSearches(config, rotation).filter(p => p.domain)) combinations.add(JSON.stringify(p));
   }
-  // 8 ru queries × 3 domains + 8 en queries × 2 domains
-  assert.equal(combinations.size, 40);
+  // 8 ru queries × 2 domains + 8 en queries × 2 domains
+  assert.equal(combinations.size, 32);
   assert.equal(planSearches({ ...config, maxQueries: 2 }).length, 2);
   assert.deepEqual(planRedditSweep(config), [{ query: 'r/poker', domain: null, language: 'en' }]);
   assert.deepEqual(planRedditSweep({ ...config, reddit: undefined }), []);
@@ -203,7 +222,7 @@ test('serper and reddit passes share one store under separate rotation keys', as
 
 test('dry run makes no directory, lock, registry or rotation changes', async t => {
   const dir = temp(t); const file = join(dir, 'nested/drill.json');
-  const provider = fakeProvider(() => [{ url: 'https://example.com/?id=1' }]);
+  const provider = fakeProvider(() => [{ url: 'https://example.com/forum/one?id=1' }]);
   const out = await runDiscovery({ config, provider, file, dryRun: true, now });
   assert.equal(out.summary.newOpportunities, 1); assert.equal(out.saved, false);
   assert.deepEqual(readdirSync(dir), []);
@@ -217,7 +236,7 @@ test('partial results persist; fatal errors stop; corrupt storage and concurrent
   const file = join(temp(t), 'drill.json');
   const provider = fakeProvider((_, n) => {
     if (n > 1) { const e = Error('HTTP 429'); e.fatal = true; throw e; }
-    return [{ url: 'https://example.com/' }, { url: 'bad' }, { url: 'bad' }];
+    return [{ url: 'https://example.com/forum/one' }, { url: 'bad' }, { url: 'bad' }];
   });
   const out = await runDiscovery({ config, provider, file, now });
   assert.equal(out.summary.queriesExecuted, 2); assert.equal(out.summary.errors, 3);

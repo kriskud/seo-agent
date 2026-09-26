@@ -8,6 +8,21 @@ export function detectPlatform(url) {
   return Object.entries(platforms).find(([domain]) => host === domain || host.endsWith('.' + domain))?.[1] ?? 'web';
 }
 
+// Сидинг = ручной ответ в обсуждении. Всё, куда ответ физически не написать
+// (магазины приложений, статьи, лендинги, видео), отсеивается ещё на discovery.
+const threadPath = /(?:^|\/)(?:forum|forums|topic|topics|thread|threads|discussion|discussions|community|comments|viewtopic|showthread|t|f)(?:\/|$|\.)/i;
+export function isSeedableThread(url) {
+  const u = new URL(url);
+  switch (detectPlatform(url)) {
+    case 'reddit': return u.pathname.includes('/comments/');
+    case 'twoplustwo': return true;
+    case 'pokeroff': return true; // и в форуме, и под статьями есть комментарии
+    case 'gipsyteam': return u.hostname.startsWith('forum.') || /viewtopic|showtopic/i.test(u.href);
+    case 'dzen': case 'youtube': case 'vk': case 'telegram': return false;
+    default: return threadPath.test(u.pathname);
+  }
+}
+
 export function canonicalizeUrl(value) {
   const u = new URL(value);
   if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) throw new Error('Invalid result URL');

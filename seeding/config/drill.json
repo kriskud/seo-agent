@@ -6,7 +6,10 @@
   "banks": [
     {
       "language": "ru",
-      "domains": ["gipsyteam.ru", "pokeroff.ru", "dzen.ru"],
+      "domains": [
+        "gipsyteam.ru",
+        "pokeroff.ru"
+      ],
       "queries": [
         "пуш фолд таблица",
         "пуш фолд чарт",
@@ -25,7 +28,10 @@
     },
     {
       "language": "en",
-      "domains": ["forumserver.twoplustwo.com", "reddit.com"],
+      "domains": [
+        "forumserver.twoplustwo.com",
+        "reddit.com"
+      ],
       "queries": [
         "push fold chart",
         "push fold trainer",
@@ -44,8 +50,27 @@
     }
   ],
   "reddit": {
-    "subreddits": ["poker"],
-    "keywords": ["push fold", "push/fold", "preflop chart", "trainer", "icm", "shove range", "study preflop", "practice preflop", "short stack"]
+    "subreddits": [
+      "poker"
+    ],
+    "keywords": [
+      "push fold",
+      "push/fold",
+      "preflop chart",
+      "trainer",
+      "icm",
+      "shove range",
+      "study preflop",
+      "practice preflop",
+      "short stack"
+    ]
   },
-  "competitors": ["gto wizard", "gtowizard", "dto poker", "snapshove", "icmizer", "preflop academy"]
+  "competitors": [
+    "gto wizard",
+    "gtowizard",
+    "dto poker",
+    "snapshove",
+    "icmizer",
+    "preflop academy"
+  ]
 }
