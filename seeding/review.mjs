@@ -149,7 +149,12 @@ const PAGE = `<!doctype html>
       if (draftedOnly && !r.draft) return false;
       if (q && (r.title + ' ' + r.snippet + ' ' + r.domain).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    }).sort(function (a, b) { return (a.score - b.score) * order || a.url.localeCompare(b.url); });
+    }).sort(function (a, b) {
+      var ad = a.draft && a.status !== 'posted' ? 1 : 0;
+      var bd = b.draft && b.status !== 'posted' ? 1 : 0;
+      if (ad !== bd) return bd - ad; // готовые к отправке черновики — всегда сверху
+      return (a.score - b.score) * order || a.url.localeCompare(b.url);
+    });
     var body = document.getElementById('rows');
     body.textContent = '';
     rows.forEach(function (r) {
