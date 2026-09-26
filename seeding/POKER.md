@@ -2,38 +2,42 @@
 
 Ветка `feat/poker-seeding`: discovery свежих обсуждений под ручной посев для
 двух покерных проектов. Яндекс-, VK- и Telegram-части ветки cosmodesk сюда
-сознательно не входят: провайдеры — только Google Custom Search JSON API и
+сознательно не входят: провайдеры — только Serper.dev (выдача Google по API) и
 публичные Atom-ленты Reddit. Никакого автопостинга: модуль только находит
 треды; ответы пишутся и публикуются вручную.
 
+История: изначально основным провайдером был Google Custom Search JSON API,
+но он закрыт для новых клиентов и полностью отключается к 2027-01-01 —
+2026-09-26 заменён на Serper (тот же интерфейс провайдера, те же банки
+запросов).
+
 ## Источники
 
-- **Google CSE** (основной): и русские (gipsyteam.ru, pokeroff.ru, dzen.ru — с
-  vps2 GipsyTeam напрямую недоступен, но выдача Google его покрывает), и
-  английские (forumserver.twoplustwo.com, reddit.com) площадки через
+- **Serper.dev** (основной): настоящая выдача Google через
+  `POST https://google.serper.dev/search` — и русские площадки (gipsyteam.ru,
+  pokeroff.ru, dzen.ru — с vps2 GipsyTeam напрямую недоступен, но выдача его
+  покрывает), и английские (forumserver.twoplustwo.com, reddit.com) через
   `site:`-запросы из банков в `seeding/config/<project>.json`. Свежесть —
-  `dateRestrict` по `freshnessDays`.
+  `tbs=qdr:dN` по `freshnessDays`; локаль банка задаёт `gl`/`hl` (ru→ru/ru,
+  en→us/en).
 - **Reddit RSS** (дополнительный, бесключевой): `reddit.com/r/<sub>/new.rss`,
   фильтрация по `reddit.keywords` конфига. Один HTTP-запрос на сабреддит.
 
 ## Настройка (один раз)
 
-1. В [Google Cloud Console](https://console.cloud.google.com/) включить
-   «Custom Search API» и создать API key.
-2. На [programmablesearchengine.google.com](https://programmablesearchengine.google.com/)
-   создать движок с поиском по всему вебу («Search the entire web») и взять его
-   идентификатор (cx).
-3. На vps2 в `~/projects/seo-agent/.env` (chmod 600, не в git):
+1. Зарегистрироваться на [serper.dev](https://serper.dev/) и взять API-ключ
+   с дашборда (2500 бесплатных запросов на старте, дальше от $50 за 50k).
+2. На vps2 в `~/projects/seo-agent/.env` (chmod 600, не в git):
 
    ```
-   GOOGLE_CSE_KEY=...
-   GOOGLE_CSE_CX=...
+   SERPER_API_KEY=...
    ```
 
-Бесплатная квота — 100 запросов/день на проект Google Cloud. Локальный дневной
-лимит по умолчанию 90 (`GOOGLE_SEARCH_DAILY_LIMIT`), общий для обоих проектов:
-файл `data/seeding/google-budget.json`, кэш выдачи 6 часов в
-`data/seeding/google-cache/`. Оба конфига с `maxQueries: 20` тратят максимум
+Serper списывает предоплаченные кредиты по запросу, поэтому локальный дневной
+лимит — чистый контроль расходов: по умолчанию 90
+(`SERPER_SEARCH_DAILY_LIMIT`), общий для обоих проектов: файл
+`data/seeding/serper-budget.json`, кэш выдачи 6 часов в
+`data/seeding/serper-cache/`. Оба конфига с `maxQueries: 20` тратят максимум
 40 запросов/день без учёта кэша.
 
 ## Запуск

@@ -6,27 +6,27 @@ import { join } from 'node:path';
 import { canonicalizeUrl, detectPlatform } from './normalize.mjs';
 import { discover, runDiscovery, planSearches, planRedditSweep, validateConfig } from './discover.mjs';
 import { readStore, acquireLock } from './storage.mjs';
-import { createGoogleProvider as realGoogleProvider, buildParams, parseItems } from './providers/google.mjs';
+import { createSerperProvider as realSerperProvider, buildBody, parseItems } from './providers/serper.mjs';
 import { createRedditRssProvider, parseFeed } from './providers/reddit-rss.mjs';
 import { createDailyBudget } from './budget.mjs';
 import { createSearchCache } from './cache.mjs';
 
 // Existing transport unit tests isolate the budget; integrated tests below use
 // the real persistent limiter. No test sends requests to the network.
-const createGoogleProvider = options => realGoogleProvider({ budget: { reserve() {} }, cache: null, ...options });
+const createSerperProvider = options => realSerperProvider({ budget: { reserve() {} }, cache: null, ...options });
 
 const drillConfig = JSON.parse(readFileSync(new URL('./config/drill.json', import.meta.url)));
 const flopConfig = JSON.parse(readFileSync(new URL('./config/floprooms.json', import.meta.url)));
 const config = drillConfig;
 const now = new Date('2026-09-24T12:00:00Z');
 const empty = () => ({ version: 1, rotation: 0, opportunities: [] });
-// Synthetic fixtures only; these tests do not contact Google or Reddit.
-const googleJson = { items: [
+// Synthetic fixtures only; these tests do not contact Serper or Reddit.
+const serperJson = { organic: [
   { link: 'https://forumserver.twoplustwo.com/15/poker-theory/push-fold-123/?utm_source=g', title: 'Push fold chart question', snippet: ' need\n a  chart ' },
   { title: 'no link, skipped' },
 ] };
-const env = { GOOGLE_CSE_KEY: 'TEST_NOT_A_REAL_KEY', GOOGLE_CSE_CX: 'test-cx' };
-const response = () => new Response(JSON.stringify(googleJson));
+const env = { SERPER_API_KEY: 'TEST_NOT_A_REAL_KEY' };
+const response = () => new Response(JSON.stringify(serperJson));
 const fakeProvider = fn => ({ name: 'test', apiRequests: 0, async search(o) { this.apiRequests++; return fn(o, this.apiRequests); } });
 function temp(t) { const dir = mkdtempSync(join(tmpdir(), 'seeding-test-')); t.after(() => rmSync(dir, { recursive: true, force: true })); return dir; }
 
@@ -88,49 +88,54 @@ test('config validation rejects wrong project, bank and reddit shapes', () => {
   assert.throws(() => validateConfig({ ...config, minResultDate: '2026-02-30' }));
 });
 
-test('Google request uses site/date/language operators and stays under limits', () => {
-  const params = buildParams({ query: 'push fold chart', domain: 'reddit.com', language: 'en', freshnessDays: 7, now });
-  assert.equal(params.get('q'), 'push fold chart site:reddit.com');
+test('Serper request uses site/date/locale operators and stays under limits', () => {
+  const body = buildBody({ query: 'push fold chart', domain: 'reddit.com', language: 'en', freshnessDays: 7, now });
+  assert.equal(body.q, 'push fold chart site:reddit.com');
   // The lower bound is a date (midnight UTC), so covering 7 full days needs d8.
-  assert.equal(params.get('dateRestrict'), 'd8');
-  assert.equal(params.get('lr'), 'lang_en');
-  assert.equal(params.get('num'), '10');
-  assert.equal(buildParams({ query: 'x', language: 'ru', freshnessDays: 30, minResultDate: '2026-09-22', now }).get('dateRestrict'), 'd3');
-  assert.throws(() => buildParams({ query: 'q'.repeat(401), now }), /400 characters/);
+  assert.equal(body.tbs, 'qdr:d8');
+  assert.equal(body.gl, 'us'); assert.equal(body.hl, 'en');
+  assert.equal(body.num, 10);
+  const ru = buildBody({ query: 'x', language: 'ru', freshnessDays: 30, minResultDate: '2026-09-22', now });
+  assert.equal(ru.tbs, 'qdr:d3');
+  assert.equal(ru.gl, 'ru'); assert.equal(ru.hl, 'ru');
+  assert.equal(buildBody({ query: 'x', freshnessDays: 1, minResultDate: '2026-09-24', now }).tbs, 'qdr:d');
+  assert.throws(() => buildBody({ query: 'q'.repeat(401), now }), /400 characters/);
 });
 
-test('Google items parse into rows; malformed payloads fail loudly', () => {
-  const rows = parseItems(googleJson);
+test('Serper items parse into rows; malformed payloads fail loudly', () => {
+  const rows = parseItems(serperJson);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].snippet, 'need a chart');
   assert.equal(rows[0].publishedAt, null);
   assert.deepEqual(parseItems({}), []);
-  assert.throws(() => parseItems({ items: 'nope' }), /Invalid Google/);
-  assert.throws(() => parseItems(null), /Invalid Google/);
+  assert.throws(() => parseItems({ organic: 'nope' }), /Invalid Serper/);
+  assert.throws(() => parseItems(null), /Invalid Serper/);
 });
 
 test('HTTP retries are bounded; credentials never appear in errors', async () => {
   let calls = 0; const waits = [];
-  const p = createGoogleProvider({ env, wait: async ms => waits.push(ms), fetchImpl: async url => {
-    assert.ok(url.startsWith('https://www.googleapis.com/customsearch/v1?'));
-    assert.ok(url.includes('key=TEST_NOT_A_REAL_KEY') && url.includes('cx=test-cx'));
+  const p = createSerperProvider({ env, wait: async ms => waits.push(ms), fetchImpl: async (url, init) => {
+    assert.equal(url, 'https://google.serper.dev/search');
+    assert.equal(init.method, 'POST');
+    assert.equal(init.headers['X-API-KEY'], 'TEST_NOT_A_REAL_KEY');
+    assert.equal(JSON.parse(init.body).q, 'push fold');
     return ++calls === 1 ? new Response('', { status: 503 }) : response();
   } });
   assert.equal((await p.search({ query: 'push fold', now })).length, 1);
   assert.equal(p.apiRequests, 2); assert.deepEqual(waits, [3000]);
-  const failing = createGoogleProvider({ env, wait: async () => {}, fetchImpl: async () => { throw Error(env.GOOGLE_CSE_KEY); } });
+  const failing = createSerperProvider({ env, wait: async () => {}, fetchImpl: async () => { throw Error(env.SERPER_API_KEY); } });
   await assert.rejects(failing.search({ query: 'x', now }), /network\/timeout/);
   assert.equal(failing.apiRequests, 2);
   for (const status of [401, 403, 429]) {
-    const limited = createGoogleProvider({ env, fetchImpl: async () => new Response('', { status }) });
-    await assert.rejects(limited.search({ query: 'x', now }), e => e.fatal && e.message === `Google HTTP ${status}`);
+    const limited = createSerperProvider({ env, fetchImpl: async () => new Response('', { status }) });
+    await assert.rejects(limited.search({ query: 'x', now }), e => e.fatal && e.message === `Serper HTTP ${status}`);
     assert.equal(limited.apiRequests, 1);
   }
-  assert.throws(() => createGoogleProvider({ env: {} }), /Set GOOGLE/);
+  assert.throws(() => createSerperProvider({ env: {} }), /Set SERPER/);
 });
 
 test('timeout aborts a hung request and exhausts bounded retries', async () => {
-  const p = createGoogleProvider({ env, timeoutMs: 5, wait: async () => {},
+  const p = createSerperProvider({ env, timeoutMs: 5, wait: async () => {},
     fetchImpl: (_, { signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason))) });
   await assert.rejects(p.search({ query: 'x', now }), /network\/timeout/);
   assert.equal(p.apiRequests, 2);
@@ -180,10 +185,10 @@ test('persistent dedupe merges queries and preserves id, first-seen and future s
   assert.equal(row.discoveredAt, now.toISOString()); assert.equal(row.lastSeenAt, later.toISOString());
 });
 
-test('google and reddit passes share one store under separate rotation keys', async t => {
+test('serper and reddit passes share one store under separate rotation keys', async t => {
   const file = join(temp(t), 'drill.json');
-  const google = fakeProvider(() => [{ url: 'https://pokeroff.ru/t/1', title: 'g' }]);
-  await runDiscovery({ config, provider: google, file, now });
+  const serper = fakeProvider(() => [{ url: 'https://pokeroff.ru/t/1', title: 'g' }]);
+  await runDiscovery({ config, provider: serper, file, now });
   const reddit = fakeProvider(() => [{ url: 'https://pokeroff.ru/t/1' }, { url: 'https://reddit.com/r/poker/comments/b2/' }]);
   const sweep = await runDiscovery({ config, provider: reddit, file, now,
     makePlan: () => planRedditSweep(config), rotationKey: 'redditRotation' });
@@ -238,26 +243,26 @@ test('all failed queries do not create a registry and do not rotate', async t =>
 test('explicit one-request limit persists across providers and dry runs', async t => {
   assert.equal(createDailyBudget({ env: {} }).limit, 90);
   const dir = temp(t), file = join(dir, 'budget.json');
-  const makeBudget = () => createDailyBudget({ env: { GOOGLE_SEARCH_DAILY_LIMIT: '1' }, file, clock: () => now });
+  const makeBudget = () => createDailyBudget({ env: { SERPER_SEARCH_DAILY_LIMIT: '1' }, file, clock: () => now });
   let calls = 0;
-  const makeProvider = () => realGoogleProvider({ env, cache: null, budget: makeBudget(), wait: async () => {},
+  const makeProvider = () => realSerperProvider({ env, cache: null, budget: makeBudget(), wait: async () => {},
     fetchImpl: async () => { calls++; return response(); } });
   const first = await runDiscovery({ config, provider: makeProvider(),
     file: join(dir, 'opportunities.json'), dryRun: true, now });
   assert.equal(first.summary.apiRequests, 1);
   assert.equal(existsSync(join(dir, 'opportunities.json')), false);
-  await assert.rejects(makeProvider().search({ query: 'x', now }), /Daily Google request limit/);
+  await assert.rejects(makeProvider().search({ query: 'x', now }), /Daily Serper request limit/);
   assert.equal(calls, 1);
   assert.equal(JSON.parse(readFileSync(file)).used, 1);
 });
 
 test('retries consume budget; exhaustion prevents retry HTTP', async t => {
   const file = join(temp(t), 'budget.json');
-  const budget = createDailyBudget({ env: { GOOGLE_SEARCH_DAILY_LIMIT: '1' }, file, clock: () => now });
+  const budget = createDailyBudget({ env: { SERPER_SEARCH_DAILY_LIMIT: '1' }, file, clock: () => now });
   let calls = 0;
-  const p = realGoogleProvider({ env, cache: null, budget, wait: async () => {},
+  const p = realSerperProvider({ env, cache: null, budget, wait: async () => {},
     fetchImpl: async () => { calls++; throw Error('uncertain network failure'); } });
-  await assert.rejects(p.search({ query: 'x', now }), /Daily Google request limit/);
+  await assert.rejects(p.search({ query: 'x', now }), /Daily Serper request limit/);
   assert.equal(calls, 1); assert.equal(p.apiRequests, 1);
 });
 
@@ -268,8 +273,8 @@ test('UTC rollover, disabled searches, invalid state and lock fail closed', t =>
   budget('2026-09-25T00:00:00Z').reserve();
   assert.equal(JSON.parse(readFileSync(file)).used, 1);
   assert.throws(() => budget('2026-09-24T23:59:59Z').reserve(), /Cannot safely/);
-  assert.throws(() => createDailyBudget({ env: { GOOGLE_SEARCH_DAILY_LIMIT: '-1' }, file }));
-  assert.throws(() => createDailyBudget({ env: { GOOGLE_SEARCH_DAILY_LIMIT: '0' }, file,
+  assert.throws(() => createDailyBudget({ env: { SERPER_SEARCH_DAILY_LIMIT: '-1' }, file }));
+  assert.throws(() => createDailyBudget({ env: { SERPER_SEARCH_DAILY_LIMIT: '0' }, file,
     clock: () => new Date('2026-09-26') }).reserve(), /limit reached/);
   const release = acquireLock(file);
   assert.throws(() => budget('2026-09-26').reserve(), /Cannot safely/); release();
@@ -281,8 +286,8 @@ test('UTC rollover, disabled searches, invalid state and lock fail closed', t =>
 test('persistent cache hits spend no HTTP budget; expiry and UTC rollover resume HTTP', async t => {
   const dir = temp(t), file = join(dir, 'budget.json');
   let time = now.getTime(), calls = 0;
-  const make = () => realGoogleProvider({ env,
-    budget: createDailyBudget({ env: { GOOGLE_SEARCH_DAILY_LIMIT: '1' }, file, clock: () => new Date(time) }),
+  const make = () => realSerperProvider({ env,
+    budget: createDailyBudget({ env: { SERPER_SEARCH_DAILY_LIMIT: '1' }, file, clock: () => new Date(time) }),
     cache: createSearchCache({ directory: join(dir, 'cache'), clock: () => time }),
     wait: async () => {}, fetchImpl: async () => { calls++; return response(); },
   });
@@ -299,8 +304,8 @@ test('persistent cache hits spend no HTTP budget; expiry and UTC rollover resume
 
 test('limit is a normal partial stop, preserves results and resumes with changed env', async t => {
   const dir = temp(t), file = join(dir, 'budget.json');
-  const make = limit => realGoogleProvider({ env, cache: null,
-    budget: createDailyBudget({ env: { GOOGLE_SEARCH_DAILY_LIMIT: limit }, file, clock: () => now }),
+  const make = limit => realSerperProvider({ env, cache: null,
+    budget: createDailyBudget({ env: { SERPER_SEARCH_DAILY_LIMIT: limit }, file, clock: () => now }),
     wait: async () => {}, fetchImpl: async () => response(),
   });
   let out = await runDiscovery({ config, provider: make('1'), file: join(dir, 'opps.json'), now });

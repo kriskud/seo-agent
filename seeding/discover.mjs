@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT, loadEnv } from '../lib.mjs';
-import { createGoogleProvider } from './providers/google.mjs';
+import { createSerperProvider } from './providers/serper.mjs';
 import { createRedditRssProvider } from './providers/reddit-rss.mjs';
 import { normalizeResult } from './normalize.mjs';
 import { readStore, writeStore, acquireLock } from './storage.mjs';
@@ -145,12 +145,12 @@ async function main() {
   const file = join(ROOT, `data/seeding/${project}.json`);
   const onError = message => console.error(`[seeding] ${message}`);
   console.log(`${project} seeding discovery${dryRun ? ' (dry run — opportunities not saved; budget is recorded)' : ''}`);
-  const google = createGoogleProvider();
-  console.log(`Daily Google request limit: ${google.dailyLimit} (UTC, shared across projects)`);
+  const serper = createSerperProvider();
+  console.log(`Daily Serper request limit: ${serper.dailyLimit} (UTC, shared across projects)`);
   const previews = [];
   let errors = 0, saved = false;
-  const out = await runDiscovery({ config, provider: google, file, dryRun, onError });
-  printSummary('google', out.summary);
+  const out = await runDiscovery({ config, provider: serper, file, dryRun, onError });
+  printSummary('serper', out.summary);
   errors += out.summary.errors; saved ||= out.saved; previews.push(...out.preview);
   if (config.reddit) {
     const reddit = createRedditRssProvider({ keywords: config.reddit.keywords });
