@@ -42,6 +42,7 @@ export function rowView(row, config) {
     id: row.id, score: scoreRow(row, config), platform: row.platform, title: row.title,
     snippet: row.snippet, matchedQueries: row.matchedQueries, domain: row.domain,
     url: row.canonicalUrl, status: row.status, publishedAt: row.publishedAt, discoveredAt: row.discoveredAt,
+    draft: row.draft ?? null, draftedAt: row.draftedAt ?? null,
   };
 }
 
@@ -67,6 +68,9 @@ const PAGE = `<!doctype html>
   tr.maybe td.actions .b-maybe, tr.maybe td.status { background: #fdf0c2; }
   tr.noise td.actions .b-noise, tr.noise td.status { background: #f6d3d3; }
   .muted { color: #777; }
+  td.actions .b-draft { background: #e3ecfb; }
+  pre.draft { white-space: pre-wrap; background: #f6f8fb; border: 1px solid #d8e0ee; border-radius: 6px; padding: 10px 12px; margin: 4px 0 8px; max-width: 900px; font: 13px/1.5 ui-monospace, monospace; }
+  td.draftcell .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
 </style>
 <h2>Seeding review</h2>
 <div class="counters" id="counters"></div>
@@ -85,6 +89,7 @@ const PAGE = `<!doctype html>
     <option value="desc">Score: по убыванию</option>
     <option value="asc">Score: по возрастанию</option>
   </select>
+  <label><input type="checkbox" id="drafted"> только с черновиком</label>
 </div>
 <table>
   <thead><tr><th>Score</th><th>Platform</th><th>Title</th><th>Snippet</th><th>Matched query</th><th>Domain</th><th>URL</th><th>Status</th><th></th></tr></thead>
@@ -100,11 +105,11 @@ const PAGE = `<!doctype html>
     return e;
   }
   function counters() {
-    var c = { total: all.length, relevant: 0, maybe: 0, noise: 0, unreviewed: 0 };
-    all.forEach(function (r) { if (c[r.status] !== undefined) c[r.status]++; else c.unreviewed++; });
+    var c = { total: all.length, relevant: 0, maybe: 0, noise: 0, unreviewed: 0, drafted: 0 };
+    all.forEach(function (r) { if (c[r.status] !== undefined) c[r.status]++; else c.unreviewed++; if (r.draft) c.drafted++; });
     var box = document.getElementById('counters');
     box.textContent = '';
-    [['total', c.total], ['relevant', c.relevant], ['maybe', c.maybe], ['noise', c.noise], ['unreviewed', c.unreviewed]].forEach(function (p) {
+    [['total', c.total], ['relevant', c.relevant], ['maybe', c.maybe], ['noise', c.noise], ['unreviewed', c.unreviewed], ['с черновиком', c.drafted]].forEach(function (p) {
       var d = el('div', null, p[0] + ': ');
       d.appendChild(el('b', null, String(p[1])));
       box.appendChild(d);
@@ -132,10 +137,12 @@ const PAGE = `<!doctype html>
     var query = document.getElementById('query').value;
     var status = document.getElementById('status').value;
     var order = document.getElementById('sort').value === 'asc' ? 1 : -1;
+    var draftedOnly = document.getElementById('drafted').checked;
     var rows = all.filter(function (r) {
       if (platform && r.platform !== platform) return false;
       if (query && r.matchedQueries.indexOf(query) < 0) return false;
       if (status && r.status !== status) return false;
+      if (draftedOnly && !r.draft) return false;
       if (q && (r.title + ' ' + r.snippet + ' ' + r.domain).toLowerCase().indexOf(q) < 0) return false;
       return true;
     }).sort(function (a, b) { return (a.score - b.score) * order || a.url.localeCompare(b.url); });
@@ -163,8 +170,33 @@ const PAGE = `<!doctype html>
         b.onclick = function () { setStatus(r, p[0], tr); };
         actions.appendChild(b);
       });
+      if (r.draft) {
+        var db = el('button', 'b-draft', r.open ? 'Скрыть' : 'Черновик');
+        db.onclick = function () { r.open = !r.open; render(); };
+        actions.appendChild(db);
+      }
       tr.appendChild(actions);
       body.appendChild(tr);
+      if (r.draft && r.open) {
+        var dtr = el('tr');
+        var dtd = el('td', 'draftcell');
+        dtd.colSpan = 9;
+        var bar = el('div', 'bar');
+        var copy = el('button', null, 'Скопировать черновик');
+        copy.onclick = function () {
+          navigator.clipboard.writeText(r.draft).then(function () { copy.textContent = 'Скопировано ✓'; setTimeout(function () { copy.textContent = 'Скопировать черновик'; }, 1500); },
+            function () { alert('Не удалось скопировать — выделите текст вручную.'); });
+        };
+        bar.appendChild(copy);
+        var open = el('a', null, 'открыть тред ↗');
+        open.href = r.url; open.target = '_blank'; open.rel = 'noopener noreferrer';
+        bar.appendChild(open);
+        if (r.draftedAt) bar.appendChild(el('span', 'muted', 'черновик от ' + r.draftedAt.slice(0, 16).replace('T', ' ') + ' UTC'));
+        dtd.appendChild(bar);
+        dtd.appendChild(el('pre', 'draft', r.draft));
+        dtr.appendChild(dtd);
+        body.appendChild(dtr);
+      }
     });
     if (!rows.length) {
       var tr = el('tr'); var td = el('td', 'muted', all.length ? 'Ничего не подходит под фильтры.' : 'Реестр пуст — запустите discovery.');
@@ -180,7 +212,7 @@ const PAGE = `<!doctype html>
       render();
     });
   }
-  ['q', 'platform', 'query', 'status', 'sort'].forEach(function (id) {
+  ['q', 'platform', 'query', 'status', 'sort', 'drafted'].forEach(function (id) {
     document.getElementById(id).addEventListener('input', render);
   });
   load();

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { htmlToText, atomToThreadText, fetchThread, threadRequestUrl, pickPending, buildPrompt, PROJECT_META } from './draft.mjs';
+import { applyDraft } from './set-draft.mjs';
 
 const threadAtom = `<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">
 <entry><author><name>/u/hero</name></author><content type="html">&lt;div&gt;BTN, 10bb, A5s — &lt;b&gt;shove&lt;/b&gt;?&lt;/div&gt;</content><link href="https://www.reddit.com/r/poker/comments/abc/"/><title>Push fold at 10bb?</title></entry>
@@ -41,16 +42,33 @@ test('reddit fetches vps2-first, forums local-first, each falls back', () => {
   assert.throws(() => fetchThread('https://reddit.com/r/poker/comments/abc', dead, dead), /vps2 curl/);
 });
 
-test('pending = relevant without existing draft, bounded by limit', () => {
+test('pending = relevant without local file or registry draft, bounded by limit', () => {
   const rows = [
     { id: 'a'.repeat(64), status: 'relevant' },
     { id: 'b'.repeat(64), status: 'relevant' },
     { id: 'c'.repeat(64), status: 'maybe' },
-    { id: 'd'.repeat(64), status: 'relevant' },
+    { id: 'd'.repeat(64), status: 'relevant', draft: 'уже есть' },
+    { id: 'e'.repeat(64), status: 'relevant' },
   ];
   const drafted = new Set(['b'.repeat(12)]);
-  assert.deepEqual(pickPending(rows, id => drafted.has(id)).map(r => r.id[0]), ['a', 'd']);
+  assert.deepEqual(pickPending(rows, id => drafted.has(id)).map(r => r.id[0]), ['a', 'e']);
   assert.deepEqual(pickPending(rows, id => drafted.has(id), 1).map(r => r.id[0]), ['a']);
+});
+
+test('applyDraft matches by unique prefix, stamps time and rejects garbage', () => {
+  const store = { opportunities: [
+    { id: 'a1'.repeat(32) }, { id: 'a2'.repeat(32) },
+  ] };
+  const now = new Date('2026-09-26T10:00:00Z');
+  const row = applyDraft(store, 'a1'.repeat(6), 'Текст черновика', 'sonnet', now);
+  assert.equal(row.id, 'a1'.repeat(32));
+  assert.equal(row.draft, 'Текст черновика');
+  assert.equal(row.draftedAt, '2026-09-26T10:00:00.000Z');
+  assert.equal(row.draftModel, 'sonnet');
+  assert.throws(() => applyDraft(store, 'a', 'x'), /at least 12/);
+  assert.throws(() => applyDraft(store, 'f'.repeat(12), 'x'), /matches 0 rows/);
+  assert.throws(() => applyDraft(store, 'a', 'x'.repeat(20)), /at least 12/);
+  assert.throws(() => applyDraft(store, 'a1'.repeat(6), '   '), /Empty draft/);
 });
 
 test('prompt carries assets, constraints, platform tone and thread text', () => {

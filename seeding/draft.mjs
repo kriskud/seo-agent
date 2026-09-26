@@ -119,7 +119,15 @@ export function fetchThread(url, fetchLocal = localCurl, fetchRemote = sshCurl) 
 }
 
 export function pickPending(rows, hasDraft, limit = Infinity) {
-  return rows.filter(r => r.status === 'relevant' && !hasDraft(r.id.slice(0, 12))).slice(0, limit);
+  return rows.filter(r => r.status === 'relevant' && !r.draft && !hasDraft(r.id.slice(0, 12))).slice(0, limit);
+}
+
+// Черновик уезжает и в реестр на vps2 — вьюер review.mjs показывает его рядом
+// с тредом (кнопка «Черновик» → скопировать → открыть тред).
+export function pushDraftToRegistry(project, id, draft, model) {
+  const res = spawnSync('ssh', ['vps2', 'node', '~/projects/seo-agent/seeding/set-draft.mjs'],
+    { input: JSON.stringify({ project, id, draft, model }), encoding: 'utf8' });
+  if (res.status !== 0) throw new Error(`set-draft failed: ${(res.stderr ?? '').slice(0, 200)}`);
 }
 
 export function buildPrompt(row, threadText, meta) {
@@ -215,8 +223,11 @@ ${draft}
 
 > ⚠️ Черновик. Проверить факты, адаптировать под ветку и опубликовать вручную.
 `);
-    if (isSkip) { console.log(draft.split('\n')[0]); skipped++; }
-    else { console.log('черновик готов'); drafted++; }
+    let pushed = '';
+    try { pushDraftToRegistry(project, row.id, draft, model); }
+    catch (e) { pushed = ` (в реестр не ушло: ${e.message})`; }
+    if (isSkip) { console.log(draft.split('\n')[0] + pushed); skipped++; }
+    else { console.log('черновик готов' + pushed); drafted++; }
   }
   console.log(`\nИтого: черновиков ${drafted}, SKIP ${skipped}, ошибок ${failed}. Папка: ${dir}`);
   if (failed) process.exitCode = 1;

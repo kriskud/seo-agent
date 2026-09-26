@@ -46,7 +46,8 @@ test('host allowlist covers only this loopback origin', () => {
 test('row view exposes triage fields without the whole stored record', () => {
   const view = rowView(row(), config);
   assert.deepEqual(Object.keys(view), ['id', 'score', 'platform', 'title', 'snippet',
-    'matchedQueries', 'domain', 'url', 'status', 'publishedAt', 'discoveredAt']);
+    'matchedQueries', 'domain', 'url', 'status', 'publishedAt', 'discoveredAt', 'draft', 'draftedAt']);
+  assert.equal(view.draft, null);
 });
 
 test('server round-trip: list, persist a status, survive restart-shaped reread', async () => {
