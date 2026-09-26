@@ -2,7 +2,7 @@
   "project": "drill",
   "freshnessDays": 7,
   "minResultDate": null,
-  "maxQueries": 22,
+  "maxQueries": 44,
   "banks": [
     {
       "language": "ru",
@@ -46,6 +46,50 @@
         "push fold trainer",
         "preflop trainer",
         "free poker trainer"
+      ]
+    },
+    {
+      "language": "es",
+      "domains": [
+        "poker-red.com",
+        "codigopoker.com"
+      ],
+      "queries": [
+        "tabla push fold",
+        "rangos push fold",
+        "entrenador de poker gratis",
+        "cómo entrenar poker",
+        "practicar preflop poker",
+        "qué es ICM en poker",
+        "stack corto torneo poker",
+        "software para estudiar poker"
+      ],
+      "generalQueries": [
+        "tabla push fold",
+        "entrenador de poker gratis",
+        "cómo entrenar poker"
+      ]
+    },
+    {
+      "language": "pt",
+      "domains": [
+        "maisev.com",
+        "reddit.com"
+      ],
+      "queries": [
+        "tabela push fold",
+        "ranges push fold",
+        "treinador de poker grátis",
+        "como treinar poker",
+        "praticar pré-flop poker",
+        "o que é ICM no poker",
+        "stack curto torneio poker",
+        "software para estudar poker"
+      ],
+      "generalQueries": [
+        "tabela push fold",
+        "treinador de poker grátis",
+        "como treinar poker"
       ]
     }
   ],

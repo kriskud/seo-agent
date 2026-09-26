@@ -5,7 +5,9 @@ import { createSearchCache } from '../cache.mjs';
 const ENDPOINT = 'https://google.serper.dev/search';
 
 // Локали банков → страна/язык выдачи Serper (обычные gl/hl Google).
-const LOCALES = { ru: { gl: 'ru', hl: 'ru' }, en: { gl: 'us', hl: 'en' } };
+// es/pt нацелены на ЛатАм: Мексика и Бразилия как крупнейшие рынки.
+const LOCALES = { ru: { gl: 'ru', hl: 'ru' }, en: { gl: 'us', hl: 'en' },
+  es: { gl: 'mx', hl: 'es' }, pt: { gl: 'br', hl: 'pt-br' } };
 
 // Cache/request identity deliberately excludes the API key, so it is never
 // hashed to disk and rotating credentials keeps the cache warm.

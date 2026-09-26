@@ -90,8 +90,8 @@ test('bounded plan rotates domains within each bank and dedupes general searches
   for (let rotation = 0; rotation < 6; rotation++) {
     for (const p of planSearches(config, rotation).filter(p => p.domain)) combinations.add(JSON.stringify(p));
   }
-  // 8 ru queries × 2 domains + 8 en queries × 2 domains
-  assert.equal(combinations.size, 32);
+  // 8 queries × 2 domains × 4 языковых банка
+  assert.equal(combinations.size, 64);
   assert.equal(planSearches({ ...config, maxQueries: 2 }).length, 2);
   assert.deepEqual(planRedditSweep(config), [{ query: 'r/poker', domain: null, language: 'en' }]);
   assert.deepEqual(planRedditSweep({ ...config, reddit: undefined }), []);
@@ -100,7 +100,7 @@ test('bounded plan rotates domains within each bank and dedupes general searches
 test('config validation rejects wrong project, bank and reddit shapes', () => {
   assert.throws(() => validateConfig({ ...config, project: 'cosmodesk' }));
   assert.throws(() => validateConfig({ ...config, banks: [] }));
-  assert.throws(() => validateConfig({ ...config, banks: [{ ...config.banks[0], language: 'es' }] }));
+  assert.throws(() => validateConfig({ ...config, banks: [{ ...config.banks[0], language: 'de' }] }));
   assert.throws(() => validateConfig({ ...config, banks: [{ ...config.banks[0], generalQueries: ['not in queries'] }] }));
   assert.throws(() => validateConfig({ ...config, reddit: { subreddits: ['ok'], keywords: [] } }));
   assert.throws(() => validateConfig({ ...config, reddit: { subreddits: ['bad name!'], keywords: ['x'] } }));
@@ -117,6 +117,10 @@ test('Serper request uses site/date/locale operators and stays under limits', ()
   const ru = buildBody({ query: 'x', language: 'ru', freshnessDays: 30, minResultDate: '2026-09-22', now });
   assert.equal(ru.tbs, 'qdr:d3');
   assert.equal(ru.gl, 'ru'); assert.equal(ru.hl, 'ru');
+  const es = buildBody({ query: 'x', language: 'es', now });
+  assert.equal(es.gl, 'mx'); assert.equal(es.hl, 'es');
+  const pt = buildBody({ query: 'x', language: 'pt', now });
+  assert.equal(pt.gl, 'br'); assert.equal(pt.hl, 'pt-br');
   assert.equal(buildBody({ query: 'x', freshnessDays: 1, minResultDate: '2026-09-24', now }).tbs, 'qdr:d');
   assert.throws(() => buildBody({ query: 'q'.repeat(401), now }), /400 characters/);
 });
@@ -192,8 +196,8 @@ test('persistent dedupe merges queries and preserves id, first-seen and future s
   const file = join(temp(t), 'drill.json');
   const provider = fakeProvider(() => [{ url: 'https://reddit.com/r/poker/comments/a1/?utm_source=x', title: 'a' }]);
   const first = await runDiscovery({ config, provider, file, now });
-  assert.equal(first.summary.newOpportunities, 1); assert.equal(first.summary.duplicatesSkipped, 21);
-  assert.equal(first.store.opportunities[0].matchedQueries.length, 16);
+  assert.equal(first.summary.newOpportunities, 1); assert.equal(first.summary.duplicatesSkipped, 43);
+  assert.equal(first.store.opportunities[0].matchedQueries.length, 32);
   const stored = readStore(file); stored.opportunities[0].status = 'relevant';
   writeFileSync(file, JSON.stringify(stored));
   const later = new Date('2026-09-25T12:00:00Z');
@@ -334,5 +338,5 @@ test('limit is a normal partial stop, preserves results and resumes with changed
   out = await runDiscovery({ config, provider: make('1'), file: join(dir, 'opps.json'), now });
   assert.equal(out.summary.errors, 0); assert.equal(out.summary.apiRequests, 0);
   out = await runDiscovery({ config, provider: make('50'), file: join(dir, 'opps.json'), now });
-  assert.equal(out.summary.limitReached, false); assert.equal(out.summary.apiRequests, 22);
+  assert.equal(out.summary.limitReached, false); assert.equal(out.summary.apiRequests, 44);
 });

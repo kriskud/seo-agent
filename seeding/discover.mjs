@@ -16,7 +16,7 @@ export function validateConfig(c) {
     || !Number.isInteger(c.maxQueries) || c.maxQueries < 1 || c.maxQueries > 100
     || !Array.isArray(c.banks) || c.banks.length === 0) throw new Error('Invalid seeding config');
   for (const b of c.banks) {
-    if (!['ru', 'en'].includes(b.language) || !strings(b.queries) || !strings(b.domains)
+    if (!['ru', 'en', 'es', 'pt'].includes(b.language) || !strings(b.queries) || !strings(b.domains)
       || !Array.isArray(b.generalQueries) || !b.generalQueries.every(q => b.queries.includes(q))
       || !b.domains.every(d => /^(?:[a-z0-9-]+\.)+[a-z]{2,}$/.test(d))) throw new Error('Invalid seeding config bank');
   }

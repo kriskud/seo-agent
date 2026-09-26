@@ -2,7 +2,7 @@
   "project": "floprooms",
   "freshnessDays": 7,
   "minResultDate": null,
-  "maxQueries": 22,
+  "maxQueries": 44,
   "banks": [
     {
       "language": "ru",
@@ -46,6 +46,50 @@
         "best crypto poker site",
         "coinpoker legit",
         "acr withdrawal time"
+      ]
+    },
+    {
+      "language": "es",
+      "domains": [
+        "poker-red.com",
+        "codigopoker.com"
+      ],
+      "queries": [
+        "en qué sala de poker jugar",
+        "retiros sala de poker",
+        "poker con criptomonedas",
+        "WPT Global opiniones",
+        "CoinPoker opiniones",
+        "ACR poker opiniones",
+        "kyc sala de poker",
+        "salas de poker para latinoamérica"
+      ],
+      "generalQueries": [
+        "en qué sala de poker jugar",
+        "WPT Global opiniones",
+        "poker con criptomonedas"
+      ]
+    },
+    {
+      "language": "pt",
+      "domains": [
+        "maisev.com",
+        "reddit.com"
+      ],
+      "queries": [
+        "qual site de poker jogar",
+        "saque site de poker",
+        "poker com criptomoedas",
+        "WPT Global é confiável",
+        "CoinPoker é confiável",
+        "ACR poker saque",
+        "kyc site de poker",
+        "sites de poker para brasileiros"
+      ],
+      "generalQueries": [
+        "qual site de poker jogar",
+        "WPT Global é confiável",
+        "saque site de poker"
       ]
     }
   ],
