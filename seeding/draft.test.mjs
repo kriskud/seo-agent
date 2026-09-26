@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { htmlToText, atomToThreadText, fetchThread, threadRequestUrl, pickPending, buildPrompt, PROJECT_META } from './draft.mjs';
+import { sanitizeDraft } from './draft.mjs';
 import { applyDraft } from './set-draft.mjs';
+
+test('sanitizer strips markdown the prompt forbids, keeps text and bare URLs', () => {
+  assert.equal(sanitizeDraft('Это **важно** и *тонко*, см. `чарт` тут: [тренажёр](https://drill.poker/en/trainers/push-fold).'),
+    'Это важно и тонко, см. чарт тут: тренажёр: https://drill.poker/en/trainers/push-fold.');
+  assert.equal(sanitizeDraft('## Заголовок\n- пункт раз\n- пункт два'), 'Заголовок\nпункт раз\nпункт два');
+  assert.equal(sanitizeDraft('обычный текст с голой ссылкой https://drill.poker/en/charts и 3*4=12 останется'),
+    'обычный текст с голой ссылкой https://drill.poker/en/charts и 3*4=12 останется');
+});
 
 const threadAtom = `<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">
 <entry><author><name>/u/hero</name></author><content type="html">&lt;div&gt;BTN, 10bb, A5s — &lt;b&gt;shove&lt;/b&gt;?&lt;/div&gt;</content><link href="https://www.reddit.com/r/poker/comments/abc/"/><title>Push fold at 10bb?</title></entry>
