@@ -1,0 +1,35 @@
+{
+  "brand": "CosmoDesk",
+  "language": "en",
+  "status": "active",
+  "website_url": "https://cosmodesk.online",
+  "audience": "independent estheticians, solo beauty professionals, small beauty studios",
+  "timezone": "America/New_York",
+  "posts_per_day": 1,
+  "slots": ["09:30", "12:30", "19:00"],
+  "weekdays": [1, 2, 3, 4, 5, 6, 7],
+  "tracking": {"utm_source": "threads", "utm_medium": "social", "utm_campaign": "cosmodesk_en"},
+  "search": {
+    "gl": "us",
+    "hl": "en",
+    "hour": 8,
+    "per_day": 6,
+    "freshness_days": 7,
+    "min_score": 70,
+    "max_leads_per_day": 5,
+    "queries": [
+      "esthetician booking app recommendations",
+      "solo esthetician what software do you use",
+      "esthetician client notes where do you keep",
+      "esthetician no shows last minute cancellations",
+      "esthetician booking system frustrated",
+      "esthetician inventory backbar tracking",
+      "esthetician clients DM to book",
+      "esthetician treatment records intake forms app",
+      "esthetician switching booking software",
+      "solo esthetician admin work overwhelmed",
+      "esthetician client retention rebooking",
+      "new esthetician starting solo suite booking"
+    ]
+  }
+}

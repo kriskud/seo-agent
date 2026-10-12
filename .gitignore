@@ -41,3 +41,4 @@ cookies.json
 auth.json
 storage-state*.json
 storageState*.json
+__pycache__/
