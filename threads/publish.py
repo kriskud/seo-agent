@@ -33,7 +33,7 @@ def _mark_published(con, post_id, threads_id, permalink):
     con.commit()
 
 
-def _fail(con, account, post, error):
+def _fail(con, account, post, error, now=None):
     attempts = post["attempts"] + 1
     if attempts >= MAX_ATTEMPTS:
         con.execute("UPDATE threads_posts SET status = 'failed', attempts = ?, error = ? WHERE id = ?",
@@ -45,7 +45,7 @@ def _fail(con, account, post, error):
         con.execute("UPDATE threads_posts SET status = 'scheduled', attempts = ?, error = ?, "
                     "container_id = NULL, scheduled_at = ? WHERE id = ?",
                     (attempts, str(error)[:500],
-                     db.fmt_ts(datetime.now(timezone.utc) + timedelta(minutes=15 * attempts)), post["id"]))
+                     db.fmt_ts((now or datetime.now(timezone.utc)) + timedelta(minutes=15 * attempts)), post["id"]))
         con.commit()
 
 
@@ -137,7 +137,7 @@ def publish_due(con, account, now=None, client=None, sleep=time.sleep):
                 done += 1
             else:
                 log.error("%s: пост №%s не опубликован: %s", account.id, post["id"], e)
-                _fail(con, account, post, e)
+                _fail(con, account, post, e, now)
             continue
         permalink = None
         try:
