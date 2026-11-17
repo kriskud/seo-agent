@@ -214,6 +214,9 @@ for (const site of loadSites()) {
         lines.push('Переходов из AI-сервисов нет.', '');
       }
     }
+    if (ai.probesWithAiUa) {
+      lines.push(`_Не учтено: ${fmt(ai.probesWithAiUa)} запросов сканеров с UA AI-ботов (/.env, /.git, wp-* и т.п.)._`, '');
+    }
   }
 
   const dir = join(ROOT, 'reports');

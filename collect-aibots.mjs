@@ -83,6 +83,12 @@ function parseLine(line) {
   return { ts, host, path, referer, ua };
 }
 
+// Сканеры уязвимостей подставляют UA ChatGPT/Claude/Perplexity и перебирают
+// служебные файлы (/.env, /.git, wp-*, *.php, /@fs/…). Это не AI-видимость —
+// считаем такие запросы отдельно и в статистику ботов не берём.
+const PROBE = /(^|\/)\.[a-z0-9_-]|\/@fs\/|%2e|\.(php|env|bak|sql|ya?ml|ini|log|conf|json|xml\.bak)(\?|$)|wp-(admin|login|content|includes)|phpmyadmin|cgi-bin|\/(gcp|aws|azure)[-_]?(key|credentials)|\/config(\.|\/|$)|::\$DATA/i;
+const isProbe = (path) => PROBE.test(path) && !/^\/\.well-known\//.test(path);
+
 const bump = (map, key, path, ts) => {
   const e = map.get(key) ?? { hits: 0, last: 0, pages: new Map() };
   e.hits++;
@@ -104,19 +110,25 @@ for (const site of loadSites()) {
   const bots = new Map();
   const refs = new Map();
   let scanned = 0;
+  let probes = 0;
   for (const line of logLines(site.accessLog)) {
     const p = line && parseLine(line);
     if (!p || p.ts < since) continue;
     if (site.logHost && p.host && p.host !== site.logHost && p.host !== `www.${site.logHost}`) continue;
     scanned++;
     const bot = BOTS.find(([, rx]) => rx.test(p.ua));
-    if (bot) { bump(bots, bot[0], p.path, p.ts); continue; }
+    if (bot) {
+      if (isProbe(p.path)) probes++;
+      else bump(bots, bot[0], p.path, p.ts);
+      continue;
+    }
     const ref = AI_REFERRERS.find(([, rx]) => rx.test(p.referer));
     if (ref) bump(refs, ref[0], p.path, p.ts);
   }
   const out = {
     windowDays: WINDOW_DAYS,
     requests: scanned,
+    probesWithAiUa: probes,
     bots: finalize(bots),
     referrals: finalize(refs),
   };

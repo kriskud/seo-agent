@@ -1,0 +1,11 @@
+{
+  "freshnessDays": 3,
+  "minBudgetRub": 8000,
+  "minBudgetUsd": 150,
+  "maxPerNotification": 10,
+  "sources": {
+    "kwork": { "categories": [41, 37, 39, 38] },
+    "flru": { "feeds": ["https://www.fl.ru/rss/all.xml"] },
+    "reddit": { "subreddits": ["forhire"], "requireTag": "hiring" }
+  }
+}
