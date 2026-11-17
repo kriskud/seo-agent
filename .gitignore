@@ -41,3 +41,8 @@ cookies.json
 auth.json
 storage-state*.json
 storageState*.json
+
+# Python bytecode
+__pycache__/
+*.pyc
+node_modules/
