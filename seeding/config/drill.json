@@ -1,0 +1,120 @@
+{
+  "project": "drill",
+  "freshnessDays": 7,
+  "minResultDate": null,
+  "maxQueries": 44,
+  "banks": [
+    {
+      "language": "ru",
+      "domains": [
+        "gipsyteam.ru",
+        "pokeroff.ru"
+      ],
+      "queries": [
+        "пуш фолд таблица",
+        "пуш фолд чарт",
+        "как играть пуш фолд",
+        "тренажёр покера",
+        "тренажёр префлопа",
+        "как тренировать покер",
+        "что такое ICM покер",
+        "игра коротким стеком турнир"
+      ],
+      "generalQueries": [
+        "пуш фолд таблица",
+        "тренажёр покера",
+        "как тренировать покер"
+      ]
+    },
+    {
+      "language": "en",
+      "domains": [
+        "forumserver.twoplustwo.com",
+        "reddit.com"
+      ],
+      "queries": [
+        "push fold chart",
+        "push fold trainer",
+        "how to practice push fold",
+        "preflop trainer",
+        "free poker trainer",
+        "how to study icm",
+        "nash push fold ranges",
+        "mdf poker explained"
+      ],
+      "generalQueries": [
+        "push fold trainer",
+        "preflop trainer",
+        "free poker trainer"
+      ]
+    },
+    {
+      "language": "es",
+      "domains": [
+        "poker-red.com",
+        "codigopoker.com"
+      ],
+      "queries": [
+        "tabla push fold",
+        "rangos push fold",
+        "entrenador de poker gratis",
+        "cómo entrenar poker",
+        "practicar preflop poker",
+        "qué es ICM en poker",
+        "stack corto torneo poker",
+        "software para estudiar poker"
+      ],
+      "generalQueries": [
+        "tabla push fold",
+        "entrenador de poker gratis",
+        "cómo entrenar poker"
+      ]
+    },
+    {
+      "language": "pt",
+      "domains": [
+        "maisev.com",
+        "reddit.com"
+      ],
+      "queries": [
+        "tabela push fold",
+        "ranges push fold",
+        "treinador de poker grátis",
+        "como treinar poker",
+        "praticar pré-flop poker",
+        "o que é ICM no poker",
+        "stack curto torneio poker",
+        "software para estudar poker"
+      ],
+      "generalQueries": [
+        "tabela push fold",
+        "treinador de poker grátis",
+        "como treinar poker"
+      ]
+    }
+  ],
+  "reddit": {
+    "subreddits": [
+      "poker"
+    ],
+    "keywords": [
+      "push fold",
+      "push/fold",
+      "preflop chart",
+      "trainer",
+      "icm",
+      "shove range",
+      "study preflop",
+      "practice preflop",
+      "short stack"
+    ]
+  },
+  "competitors": [
+    "gto wizard",
+    "gtowizard",
+    "dto poker",
+    "snapshove",
+    "icmizer",
+    "preflop academy"
+  ]
+}

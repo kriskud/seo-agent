@@ -1,0 +1,129 @@
+{
+  "project": "floprooms",
+  "freshnessDays": 7,
+  "minResultDate": null,
+  "maxQueries": 44,
+  "banks": [
+    {
+      "language": "ru",
+      "domains": [
+        "gipsyteam.ru",
+        "pokeroff.ru"
+      ],
+      "queries": [
+        "в каком руме играть",
+        "вывод денег покер рум",
+        "покер рум вывод крипта",
+        "ACR отзывы вывод",
+        "WPT Global отзывы",
+        "CoinPoker отзывы",
+        "kyc покер рум",
+        "покер румы для Азии"
+      ],
+      "generalQueries": [
+        "в каком руме играть",
+        "вывод денег покер рум",
+        "WPT Global отзывы"
+      ]
+    },
+    {
+      "language": "en",
+      "domains": [
+        "forumserver.twoplustwo.com",
+        "reddit.com"
+      ],
+      "queries": [
+        "acr withdrawal time",
+        "wpt global withdrawal",
+        "coinpoker legit",
+        "best crypto poker site",
+        "poker site kyc withdrawal",
+        "wpt global license",
+        "natural8 withdrawal",
+        "which poker site should I play"
+      ],
+      "generalQueries": [
+        "best crypto poker site",
+        "coinpoker legit",
+        "acr withdrawal time"
+      ]
+    },
+    {
+      "language": "es",
+      "domains": [
+        "poker-red.com",
+        "codigopoker.com"
+      ],
+      "queries": [
+        "en qué sala de poker jugar",
+        "retiros sala de poker",
+        "poker con criptomonedas",
+        "WPT Global opiniones",
+        "CoinPoker opiniones",
+        "ACR poker opiniones",
+        "kyc sala de poker",
+        "salas de poker para latinoamérica"
+      ],
+      "generalQueries": [
+        "en qué sala de poker jugar",
+        "WPT Global opiniones",
+        "poker con criptomonedas"
+      ]
+    },
+    {
+      "language": "pt",
+      "domains": [
+        "maisev.com",
+        "reddit.com"
+      ],
+      "queries": [
+        "qual site de poker jogar",
+        "saque site de poker",
+        "poker com criptomoedas",
+        "WPT Global é confiável",
+        "CoinPoker é confiável",
+        "ACR poker saque",
+        "kyc site de poker",
+        "sites de poker para brasileiros"
+      ],
+      "generalQueries": [
+        "qual site de poker jogar",
+        "WPT Global é confiável",
+        "saque site de poker"
+      ]
+    }
+  ],
+  "reddit": {
+    "subreddits": [
+      "poker",
+      "onlinepoker"
+    ],
+    "keywords": [
+      "withdrawal",
+      "cash out",
+      "cashout",
+      "acr",
+      "americas cardroom",
+      "wpt global",
+      "coinpoker",
+      "natural8",
+      "kyc",
+      "crypto poker",
+      "which site",
+      "black chip",
+      "betonline"
+    ]
+  },
+  "competitors": [
+    "acr",
+    "americas cardroom",
+    "wpt global",
+    "coinpoker",
+    "natural8",
+    "redstar",
+    "stake",
+    "betonline",
+    "black chip",
+    "gg"
+  ]
+}

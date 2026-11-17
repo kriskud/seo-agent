@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT } from '../lib.mjs';
+import { PROJECTS } from './discover.mjs';
 import { readStore, writeStore, acquireLock } from './storage.mjs';
 
-export const REVIEW_STATUSES = ['relevant', 'maybe', 'noise', 'discovered'];
+export const REVIEW_STATUSES = ['relevant', 'maybe', 'noise', 'posted', 'discovered'];
 
 // Deterministic display heuristic for manual triage ordering only. It is not a
 // classifier and is never stored: matched queries, competitor mentions and
@@ -27,6 +28,8 @@ export function applyStatus(store, id, status, now = new Date()) {
   row.status = status;
   if (status === 'discovered') delete row.reviewedAt;
   else row.reviewedAt = now.toISOString();
+  if (status === 'posted') row.postedAt = now.toISOString();
+  else delete row.postedAt;
   return row;
 }
 
@@ -41,6 +44,7 @@ export function rowView(row, config) {
     id: row.id, score: scoreRow(row, config), platform: row.platform, title: row.title,
     snippet: row.snippet, matchedQueries: row.matchedQueries, domain: row.domain,
     url: row.canonicalUrl, status: row.status, publishedAt: row.publishedAt, discoveredAt: row.discoveredAt,
+    draft: row.draft ?? null, draftedAt: row.draftedAt ?? null, postedAt: row.postedAt ?? null,
   };
 }
 
@@ -65,7 +69,11 @@ const PAGE = `<!doctype html>
   tr.relevant td.actions .b-relevant, tr.relevant td.status { background: #d3f2d3; }
   tr.maybe td.actions .b-maybe, tr.maybe td.status { background: #fdf0c2; }
   tr.noise td.actions .b-noise, tr.noise td.status { background: #f6d3d3; }
+  tr.posted td.actions .b-posted, tr.posted td.status { background: #d6e4f7; }
   .muted { color: #777; }
+  td.actions .b-draft { background: #e3ecfb; }
+  pre.draft { white-space: pre-wrap; background: #f6f8fb; border: 1px solid #d8e0ee; border-radius: 6px; padding: 10px 12px; margin: 4px 0 8px; max-width: 900px; font: 13px/1.5 ui-monospace, monospace; }
+  td.draftcell .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
 </style>
 <h2>Seeding review</h2>
 <div class="counters" id="counters"></div>
@@ -79,11 +87,13 @@ const PAGE = `<!doctype html>
     <option value="relevant">Relevant</option>
     <option value="maybe">Maybe</option>
     <option value="noise">Noise</option>
+    <option value="posted">Отправлено</option>
   </select>
   <select id="sort">
     <option value="desc">Score: по убыванию</option>
     <option value="asc">Score: по возрастанию</option>
   </select>
+  <label><input type="checkbox" id="drafted"> только с черновиком</label>
 </div>
 <table>
   <thead><tr><th>Score</th><th>Platform</th><th>Title</th><th>Snippet</th><th>Matched query</th><th>Domain</th><th>URL</th><th>Status</th><th></th></tr></thead>
@@ -99,11 +109,11 @@ const PAGE = `<!doctype html>
     return e;
   }
   function counters() {
-    var c = { total: all.length, relevant: 0, maybe: 0, noise: 0, unreviewed: 0 };
-    all.forEach(function (r) { if (c[r.status] !== undefined) c[r.status]++; else c.unreviewed++; });
+    var c = { total: all.length, relevant: 0, maybe: 0, noise: 0, posted: 0, unreviewed: 0, drafted: 0 };
+    all.forEach(function (r) { if (c[r.status] !== undefined) c[r.status]++; else c.unreviewed++; if (r.draft) c.drafted++; });
     var box = document.getElementById('counters');
     box.textContent = '';
-    [['total', c.total], ['relevant', c.relevant], ['maybe', c.maybe], ['noise', c.noise], ['unreviewed', c.unreviewed]].forEach(function (p) {
+    [['total', c.total], ['relevant', c.relevant], ['maybe', c.maybe], ['noise', c.noise], ['отправлено', c.posted], ['unreviewed', c.unreviewed], ['с черновиком', c.drafted]].forEach(function (p) {
       var d = el('div', null, p[0] + ': ');
       d.appendChild(el('b', null, String(p[1])));
       box.appendChild(d);
@@ -131,13 +141,20 @@ const PAGE = `<!doctype html>
     var query = document.getElementById('query').value;
     var status = document.getElementById('status').value;
     var order = document.getElementById('sort').value === 'asc' ? 1 : -1;
+    var draftedOnly = document.getElementById('drafted').checked;
     var rows = all.filter(function (r) {
       if (platform && r.platform !== platform) return false;
       if (query && r.matchedQueries.indexOf(query) < 0) return false;
       if (status && r.status !== status) return false;
+      if (draftedOnly && !r.draft) return false;
       if (q && (r.title + ' ' + r.snippet + ' ' + r.domain).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    }).sort(function (a, b) { return (a.score - b.score) * order || a.url.localeCompare(b.url); });
+    }).sort(function (a, b) {
+      var ad = a.draft && a.status !== 'posted' ? 1 : 0;
+      var bd = b.draft && b.status !== 'posted' ? 1 : 0;
+      if (ad !== bd) return bd - ad; // готовые к отправке черновики — всегда сверху
+      return (a.score - b.score) * order || a.url.localeCompare(b.url);
+    });
     var body = document.getElementById('rows');
     body.textContent = '';
     rows.forEach(function (r) {
@@ -157,13 +174,39 @@ const PAGE = `<!doctype html>
       var tdUrl = el('td'); tdUrl.appendChild(link); tr.appendChild(tdUrl);
       tr.appendChild(el('td', 'status', r.status === 'discovered' ? 'unreviewed' : r.status));
       var actions = el('td', 'actions');
-      [['relevant', 'Relevant'], ['maybe', 'Maybe'], ['noise', 'Noise']].forEach(function (p) {
+      [['relevant', 'Relevant'], ['maybe', 'Maybe'], ['noise', 'Noise'], ['posted', 'Отправлено']].forEach(function (p) {
         var b = el('button', 'b-' + p[0], p[1]);
         b.onclick = function () { setStatus(r, p[0], tr); };
         actions.appendChild(b);
       });
+      if (r.draft) {
+        var db = el('button', 'b-draft', r.open ? 'Скрыть' : 'Черновик');
+        db.onclick = function () { r.open = !r.open; render(); };
+        actions.appendChild(db);
+      }
       tr.appendChild(actions);
       body.appendChild(tr);
+      if (r.draft && r.open) {
+        var dtr = el('tr');
+        var dtd = el('td', 'draftcell');
+        dtd.colSpan = 9;
+        var bar = el('div', 'bar');
+        var copy = el('button', null, 'Скопировать черновик');
+        copy.onclick = function () {
+          navigator.clipboard.writeText(r.draft).then(function () { copy.textContent = 'Скопировано ✓'; setTimeout(function () { copy.textContent = 'Скопировать черновик'; }, 1500); },
+            function () { alert('Не удалось скопировать — выделите текст вручную.'); });
+        };
+        bar.appendChild(copy);
+        var open = el('a', null, 'открыть тред ↗');
+        open.href = r.url; open.target = '_blank'; open.rel = 'noopener noreferrer';
+        bar.appendChild(open);
+        if (r.draftedAt) bar.appendChild(el('span', 'muted', 'черновик от ' + r.draftedAt.slice(0, 16).replace('T', ' ') + ' UTC'));
+        if (r.postedAt) bar.appendChild(el('span', 'muted', 'отправлено ' + r.postedAt.slice(0, 16).replace('T', ' ') + ' UTC'));
+        dtd.appendChild(bar);
+        dtd.appendChild(el('pre', 'draft', r.draft));
+        dtr.appendChild(dtd);
+        body.appendChild(dtr);
+      }
     });
     if (!rows.length) {
       var tr = el('tr'); var td = el('td', 'muted', all.length ? 'Ничего не подходит под фильтры.' : 'Реестр пуст — запустите discovery.');
@@ -179,7 +222,7 @@ const PAGE = `<!doctype html>
       render();
     });
   }
-  ['q', 'platform', 'query', 'status', 'sort'].forEach(function (id) {
+  ['q', 'platform', 'query', 'status', 'sort', 'drafted'].forEach(function (id) {
     document.getElementById(id).addEventListener('input', render);
   });
   load();
@@ -243,13 +286,21 @@ export function createReviewServer({ file, config }) {
 
 function main() {
   const args = process.argv.slice(2);
-  if (args.includes('--help')) { console.log('Usage: node seeding/review.mjs [--port N]'); return; }
-  const portIndex = args.indexOf('--port');
-  const port = portIndex >= 0 ? Number(args[portIndex + 1]) : 8787;
-  const known = portIndex >= 0 ? args.slice(0, portIndex).concat(args.slice(portIndex + 2)) : args;
-  if (known.length || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Unknown argument. Use --help.');
-  const config = JSON.parse(readFileSync(join(ROOT, 'seeding/config/cosmodesk.json'), 'utf8'));
-  const file = join(ROOT, 'data/seeding/cosmodesk.json');
+  const usage = `Usage: node seeding/review.mjs --project <${PROJECTS.join('|')}> [--port N]`;
+  if (args.includes('--help')) { console.log(usage); return; }
+  const take = flag => {
+    const i = args.indexOf(flag);
+    if (i < 0) return null;
+    const [value] = args.splice(i, 2).slice(1);
+    return value;
+  };
+  const project = take('--project');
+  const port = Number(take('--port') ?? 8787);
+  if (args.length || !PROJECTS.includes(project) || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error(usage);
+  const config = JSON.parse(readFileSync(join(ROOT, `seeding/config/${project}.json`), 'utf8'));
+  // scoreRow reads a flat query list; project configs keep queries in banks.
+  config.queries = (config.banks ?? []).flatMap(bank => bank.queries);
+  const file = join(ROOT, `data/seeding/${project}.json`);
   const server = createReviewServer({ file, config });
   server.listen(port, '127.0.0.1', () => {
     console.log(`Seeding review: http://127.0.0.1:${port}/ (localhost only)`);
