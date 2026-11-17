@@ -1,0 +1,48 @@
+# REVIEW ONLY. Do not install/enable before the security review and listener tests.
+# Target: server 26s_kris, systemd 249. No secrets or session values in this file.
+[Unit]
+Description=CosmoDesk allowlisted Telegram discovery (proposed)
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/seo-agent/telegram-approved
+
+[Service]
+Type=simple
+User=seoagent
+Group=seoagent
+UMask=0077
+WorkingDirectory=/opt/seo-agent-telegram
+# These scripts are future implementation, not present or installed yet.
+ExecStartPre=/usr/bin/node /opt/seo-agent-telegram/check-permissions.mjs
+ExecStart=/usr/bin/node /opt/seo-agent-telegram/listener.mjs
+Environment=NODE_ENV=production
+Environment=TELEGRAM_SECRETS_DIR=/etc/seo-agent/secrets
+Environment=TELEGRAM_SESSION_DIR=/var/lib/seo-agent/telegram
+Environment=TELEGRAM_ALLOWLIST_FILE=/etc/seo-agent/telegram-sources.json
+Environment=TELEGRAM_OUTPUT_DIR=/var/lib/seo-agent/opportunities
+Restart=no
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/seo-agent/telegram /var/lib/seo-agent/opportunities
+ReadOnlyPaths=/etc/seo-agent/secrets /etc/seo-agent/telegram-sources.json
+LimitCORE=0
+# Until redaction is tested, library stdout/stderr are never sent to shared logs.
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

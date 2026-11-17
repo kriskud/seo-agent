@@ -1,0 +1,23 @@
+{
+  "project": "cosmodesk",
+  "enabled": false,
+  "purpose": "monitoring-discovery-only",
+  "permissions": {
+    "sendMessages": false,
+    "reply": false,
+    "react": false,
+    "joinChats": false
+  },
+  "sources": [
+    { "username": "kosmetologiChat", "peerId": null, "type": null },
+    { "username": "Cosmetologi_beauty", "peerId": null, "type": null },
+    { "username": "techc_kosmetologija", "peerId": null, "type": null },
+    { "username": "Kosmetologia_chat_ru", "peerId": null, "type": null },
+    { "username": "cosmetology_chat", "peerId": null, "type": null },
+    { "username": "cosmetologi_russia", "peerId": null, "type": null },
+    { "username": "cosmetologygroup_chat", "peerId": null, "type": null },
+    { "username": "kosmetolog_topchat", "peerId": null, "type": null },
+    { "username": "top_beauty_masters", "peerId": null, "type": null },
+    { "username": "cosmetology_help", "peerId": null, "type": null }
+  ]
+}
