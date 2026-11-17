@@ -1,6 +1,6 @@
 """Разовое сохранение токена Threads в базу.
 
-Запуск на сервере:  venv/bin/python -m threads.auth_bootstrap
+Запуск на сервере:  venv/bin/python -m threads.auth_bootstrap <account>
 Токен вставляется скрытым вводом и нигде, кроме базы, не сохраняется.
 """
 import getpass
@@ -15,6 +15,10 @@ ASSUMED_DAYS = 60  # у long-lived токена Threads срок жизни 60 �
 
 def main():
     config.setup_logging()
+    accounts = config.load_accounts()
+    if len(sys.argv) != 2 or sys.argv[1] not in accounts:
+        sys.exit(f"Укажи аккаунт: python -m threads.auth_bootstrap <{' | '.join(accounts)}>")
+    account = sys.argv[1]
     token = getpass.getpass("Вставь токен из кабинета Meta (ввод невидим) и нажми Enter: ").strip()
     if not token:
         sys.exit("Пустой ввод — токен не получен.")
@@ -45,12 +49,12 @@ def main():
 
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
     con = db.connect()
-    db.save_auth(con, str(me["id"]), token, expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    db.save_auth(con, account, str(me["id"]), token, db.fmt_ts(expires_at), me.get("username"))
 
-    saved = db.get_auth(con)  # читаем обратно из базы — доказательство, что строка есть
+    saved = db.get_auth(con, account)  # читаем обратно из базы — доказательство, что строка есть
     until = db.parse_ts(saved["expires_at"])
     days = (until - datetime.now(timezone.utc)).days
-    print(f"Аккаунт: @{me['username']} (id {saved['user_id']})")
+    print(f"{account}: @{me['username']} (id {saved['user_id']})")
     print(f"Токен сохранён в базе, действует до {until:%Y-%m-%d} (ещё {days} дн.).")
 
 

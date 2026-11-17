@@ -1,0 +1,16 @@
+# Копировать в /etc/systemd/system/threads-agent.service, путь WorkingDirectory — свой.
+[Unit]
+Description=Threads agent (seo-agent/threads)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kris
+WorkingDirectory=/home/kris/projects/seo-agent
+ExecStart=/home/kris/projects/seo-agent/venv/bin/python -m threads.run
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

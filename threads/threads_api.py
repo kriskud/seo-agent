@@ -25,6 +25,16 @@ class ThreadsApiError(Exception):
         super().__init__(f"HTTP {status}: {message}")
 
 
+    @property
+    def auth_failed(self):
+        """Токен отозван или истёк (код 190 у Meta) — повторять бессмысленно, нужен новый."""
+        return self.status == 401 or '"code":190' in str(self).replace(" ", "")
+
+
+class NoTokenError(RuntimeError):
+    pass
+
+
 class ThreadsClient:
     def __init__(self, access_token, user_id=None):
         self.token = access_token
@@ -34,10 +44,11 @@ class ThreadsClient:
             self.session.proxies = {"http": config.HTTP_PROXY, "https": config.HTTP_PROXY}
 
     @classmethod
-    def from_db(cls, con):
-        auth = db.get_auth(con)
+    def from_db(cls, con, account):
+        auth = db.get_auth(con, account)
         if not auth:
-            raise RuntimeError("В базе нет токена Threads — сначала запусти threads.auth_bootstrap")
+            raise NoTokenError(f"В базе нет токена для {account} — запусти "
+                               f"python -m threads.auth_bootstrap {account}")
         return cls(auth["access_token"], auth["user_id"])
 
     # --- низкий уровень -------------------------------------------------
@@ -101,6 +112,9 @@ class ThreadsClient:
         res = self._request("POST", f"{API}/{self.user_id}/threads_publish",
                             data={"creation_id": container_id}, retry=False)
         return res["id"]
+
+    def post_info(self, post_id):
+        return self._request("GET", f"{API}/{post_id}", params={"fields": "id,permalink,timestamp"})
 
     def recent_posts(self, limit=25):
         res = self._request("GET", f"{API}/{self.user_id}/threads", params={
