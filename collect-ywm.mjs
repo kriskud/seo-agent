@@ -68,7 +68,16 @@ for (const site of loadSites()) {
   const out = { host_id: host.host_id, host_url: host.ascii_host_url };
   const base = `/user/${user_id}/hosts/${host.host_id}`;
 
-  out.summary = await api(`${base}/summary`);
+  try {
+    out.summary = await api(`${base}/summary`);
+  } catch (e) {
+    // Свежедобавленный хост: Вебмастер ещё не загрузил данные (HOST_NOT_LOADED) — пропускаем до следующего прогона.
+    if (String(e.message).includes("HOST_NOT_LOADED")) {
+      console.log(`[ywm] ${site.name}: Вебмастер ещё не загрузил данные по хосту — пропускаю`);
+      continue;
+    }
+    throw e;
+  }
 
   try {
     const q = await api(

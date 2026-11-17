@@ -1,2 +1,31 @@
-{ "sites": [ { "name": "cosmodesk", "url": "https://cosmodesk.ru", "gsc": "sc-domain:cosmodesk.ru", "yandex": true, "indexnow": true,
-               "accessLog": "/srv/logs/cosm/nginx.access.log", "logHost": "cosmodesk.ru" } ] }
+{
+  "sites": [
+    {
+      "name": "cosmodesk",
+      "url": "https://cosmodesk.ru",
+      "gsc": "sc-domain:cosmodesk.ru",
+      "yandex": true,
+      "indexnow": true,
+      "accessLog": "/srv/logs/cosm/nginx.access.log",
+      "logHost": "cosmodesk.ru"
+    },
+    {
+      "name": "bodytime",
+      "url": "https://bodytime.online",
+      "gsc": "sc-domain:bodytime.online",
+      "yandex": true,
+      "indexnow": true,
+      "accessLog": "/srv/logs/massiko/nginx.access.log",
+      "logHost": "bodytime.online"
+    },
+    {
+      "name": "iamonline",
+      "url": "https://iamonline.tech",
+      "gsc": "sc-domain:iamonline.tech",
+      "yandex": true,
+      "indexnow": true,
+      "accessLog": "/srv/logs/nginx/nginx.access.log",
+      "logHost": "iamonline.tech"
+    }
+  ]
+}
