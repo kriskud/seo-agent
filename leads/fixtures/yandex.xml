@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<yandexsearch version="1.0"><request><query>"ищу разработчика бота"</query></request><response date="20261118T020000"><reqid>example</reqid><found priority="all">3</found><results><grouping attr="" mode="flat"><page first="1" last="3">0</page>
+<group><doc id="A1"><relevance/><url>https://otvet.mail.ru/question/100000001</url><domain>otvet.mail.ru</domain><title><hlword>Ищу разработчика бота</hlword> для записи клиентов - Ответы Mail</title><modtime>20261115T101500</modtime><passages><passage>Нужен телеграм-бот для записи в салон, кто сделает? Бюджет 25 000 руб.</passage></passages></doc></group>
+<group><doc id="A2"><url>https://example-studio.ru/telegram-boty/</url><domain>example-studio.ru</domain><title>Разработка Telegram-ботов под ключ от 15 000 ₽</title><passages><passage>«<hlword>Ищу разработчика</hlword>, нужен бот для записи клиентов» — так начинается каждый наш проект.</passage></passages></doc></group>
+<group><doc id="A3"><url>https://vk.com/wall-100000_42</url><title>Ищу разработчика бота &amp; CRM</title><passages><passage>Ищем подрядчика: <![CDATA[чат-бот + CRM]]> для онлайн-школы.</passage><passage>Пишите в ЛС.</passage></passages></doc></group>
+</grouping></results></response></yandexsearch>

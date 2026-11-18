@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<rss version="2.0">
+<channel>
+  <title>Заказы на FL.ru</title>
+      <item>
+      <title><![CDATA[Разработка CRM для салона красоты (Бюджет: 90 000 &#8381;)]]></title>
+      <link>https://www.fl.ru/projects/9000001/razrabotka-crm.html</link>
+      <description><![CDATA[Нужна простая CRM: клиенты, записи, &laquo;абонементы&raquo;, отчёты.]]></description>
+      <guid>https://www.fl.ru/projects/9000001/razrabotka-crm.html</guid>
+      <category><![CDATA[Программирование / Веб-программирование]]></category>
+      <pubDate>Tue, 17 Nov 2026 20:15:00 GMT</pubDate>
+    </item>
+      <item>
+      <title><![CDATA[Логотип для кофейни]]></title>
+      <link>https://www.fl.ru/projects/9000002/logotip.html</link>
+      <description><![CDATA[Нужен логотип.]]></description>
+      <pubDate>Tue, 17 Nov 2026 21:00:00 GMT</pubDate>
+    </item>
+</channel>
+</rss>
