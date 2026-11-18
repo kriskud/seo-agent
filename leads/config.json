@@ -1,5 +1,5 @@
 {
-  "_comment": "enabled:false — источник не опрашивается (код остаётся). notify:false — собирается в отчёт без Telegram. Kwork/FL.ru выключены: демпинг и огромная конкуренция. Telegram-каналы выключены: за 14 дней 16 «заказных» каналов дали 0 подходящих сообщений — вакансии в штат, дизайн, дайджесты. См. leads/README.md.",
+  "_comment": "enabled:false — источник не опрашивается (код остаётся). notify:false — собирается в отчёт без Telegram. Kwork/FL.ru выключены: демпинг и огромная конкуренция. Telegram-каналы выключены: за 14 дней 16 «заказных» каналов дали 0 подходящих сообщений — вакансии в штат, дизайн, дайджесты. См. leads/README.md. websearch выключен 2026-11-18 по просьбе Кристины: Яндекс Поиск API платный.",
   "freshnessDays": 3,
   "minBudgetRub": 8000,
   "minBudgetUsd": 150,
@@ -61,6 +61,7 @@
       ]
     },
     "websearch": {
+      "enabled": false,
       "minIntervalMinutes": 180,
       "perRun": 2,
       "searchFreshnessDays": 60,

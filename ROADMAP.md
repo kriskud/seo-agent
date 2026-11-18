@@ -5,7 +5,7 @@
 | Часть | Состояние | Где |
 |---|---|---|
 | Еженедельный SEO-отчёт (cosmodesk, bodytime, iamonline) | работает: `seo-agent.timer`, понедельник 05:40 UTC. Отчёт пока есть только для cosmodesk; bodytime и iamonline добавлены недавно, первые отчёты ожидаются 2026-11-23 | [README](README.md) |
-| leads — заказы для iamonline | работает, cron каждые 20 мин. Источники: Яндекс Поиск (UGC-площадки), HN, Reddit. Kwork/FL.ru и Telegram-каналы выключены. Уведомлений нет, пока не задан бот | [leads/README.md](leads/README.md), [идеи](leads/IDEAS.md) |
+| leads — заказы для iamonline | работает, cron каждые 20 мин. Источники: HN, Reddit. Яндекс Поиск (платный) выключен 2026-11-18. Kwork/FL.ru и Telegram-каналы выключены. Уведомлений нет, пока не задан бот | [leads/README.md](leads/README.md), [идеи](leads/IDEAS.md) |
 | seeding — посев | в `main` покерная версия (Serper + Reddit) для floprooms/drill — на этом сервере ключа Serper нет. CosmoDesk-версия (Яндекс/VK) удалена из `main`, есть в истории (`7c089c1`, удалена в `fb23093`) | [seeding/POKER.md](seeding/POKER.md) |
 | threads — Threads-агент | код готов, тесты есть, вживую не запускался. Аккаунты: `cosmodesk_en` (active), `cosmodesk_ru` (draft) | [threads/README.md](threads/README.md) |
 
