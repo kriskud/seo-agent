@@ -51,6 +51,9 @@ export function parseSearchResults(results, { query, deny = DEFAULT_DENY } = {})
       url: r.url,
       title: (r.title ?? '').slice(0, 200),
       text: (r.snippet ?? '').slice(0, 1200),
+      // Заголовок Q&A — сам вопрос, у стены VK — начало поста; сниппет
+      // смешивает его с ответами других людей.
+      intentText: (r.title ?? '').replace(/ [-—|] (Ответы Mail|Хабр Q&A).*$/, ''),
       budget: null,
       // Дату документа Яндекс не отдаёт (modtime — не дата публикации),
       // свежесть обеспечивает оператор date: в самом запросе.

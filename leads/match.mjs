@@ -33,7 +33,7 @@ export const PROMO = unicodeRegex('перейти к боту|подпишись
 const SEEK = '(ищу|ищем|ищет|ищется|нужен|нужна|нужно|нужны|требуется|требуются|подскажите|посоветуйте|порекомендуйте|разыскива[а-я]*|в поиске|кто (может|сможет|сделает|делал|возьм[её]тся)|хочу заказать|готов[ы]? (оплатить|заплатить)|looking for|seeking|need|needed|want to hire|we are hiring|wanted|anyone (know|who can)|can anyone (recommend|build)|recommendations? for)';
 // …и то, что ищут. Важно именно соседство: «нужен бот» — наш лид,
 // «ищу монтажёра, оплата через бота» — нет.
-const OUR_TARGET = '(разработчик|программист|девелопер|developer|freelancer|contractor|engineer|\\bбот\\b|\\bбота\\b|\\bботов\\b|\\bbot\\b|\\bcrm\\b|\\bсрм\\b|mini ?app|мини[- ]?ап|сайт|лендинг|landing|приложени|автоматизаци|web app|подрядчик|исполнител|студи[юя] разработки|команд[уы] разработки|чат-?бот|онлайн-?запис|личный кабинет)';
+const OUR_TARGET = '(разработчик|программист|девелопер|developer|freelancer|contractor|engineer|\\bбот\\b|\\bбота\\b|\\bbot\\b|\\bcrm\\b|\\bсрм\\b|mini ?app|мини[- ]?ап|сайт|лендинг|landing|приложени|автоматизаци|web app|подрядчик|исполнител|студи[юя] разработки|команд[уы] разработки|чат-?бот|онлайн-?запис|личный кабинет)';
 const NEAR = '[^.!?\\n]{0,60}';
 
 /** Кто-то ищет исполнителя именно под наши услуги. */
@@ -45,7 +45,7 @@ export const SEEKING = unicodeRegex(`\\b${SEEK}\\b${NEAR}${OUR_TARGET}`);
 export const NOT_OUR_ROLE = unicodeRegex(`\\b${SEEK}\\b[^.!?\\n]{0,30}(дизайнер|designer|продакт|проджект|project manager|product manager|аналитик|копирайтер|редактор|таргетолог|маркетолог|монтаж[её]р|видеограф|фотограф|рекрутер|менеджер по продажам|менеджер проект|оператор|бухгалтер|юрист|тестировщик|\\bqa\\b|devops|\\bsre\\b|системн(ый|ого) администратор|сисадмин|преподавател|методист|куратор|модератор|ассистент|продюсер)`);
 
 // Исполнитель предлагает себя — такое в лиды не берём.
-export const OFFERING = unicodeRegex('ищу (работу|заказы|проекты|подработку)|мо[ие] услуги|мо[её] портфолио|\\bрезюме\\b|возьмусь за|сделаю (бота|сайт|лендинг|crm)|разработаю (бота|сайт|лендинг)|(разработка|создание)[^.\\n]{0,40}от \\d[\\d\\s]*(₽|руб)|под ключ от \\d|(когда|кому|зачем|почему|нужен ли)[^.!?\\n]{0,30}нуж(ен|на|но|ны) (чат-?|телеграм-?)?(бот|crm|сайт|лендинг)|опыт (работы )?\\d+ (год|года|лет)|\\bprice list\\b|seeking work|seeking freelance\\b|\\bhire me\\b|available for (work|hire|projects)|my (portfolio|rates)|\\bi (can|will) build\\b|\\[for hire\\]');
+export const OFFERING = unicodeRegex('ищу (работу|заказы|проекты|подработку)|мо[ие] услуги|мо[её] портфолио|\\bрезюме\\b|возьмусь за|сделаю (бота|сайт|лендинг|crm)|разработаю (бота|сайт|лендинг)|(разработка|создание)[^.\\n]{0,40}от \\d[\\d\\s]*(₽|руб)|под ключ от \\d|(когда|кому|зачем|почему|нужен ли|как сильно|насколько)[^.!?\\n]{0,30}нуж(ен|на|но|ны) (чат-?|телеграм-?)?(бот|crm|сайт|лендинг)|опыт (работы )?\\d+ (год|года|лет)|\\bprice list\\b|seeking work|seeking freelance\\b|\\bhire me\\b|available for (work|hire|projects)|my (portfolio|rates)|\\bi (can|will) build\\b|\\[for hire\\]');
 
 export function matchServices(text) {
   return Object.entries(SERVICES).filter(([, rx]) => rx.test(text)).map(([k]) => k);
@@ -80,7 +80,9 @@ export function parseBudget(text) {
 export function qualify(lead, config) {
   const text = `${lead.title}\n${lead.text}`;
   if (EXCLUDE.test(text) || VACANCY.test(text)) return null;
-  if (lead.kind === 'post' && (PROMO.test(text) || !hasIntent(text))) return null;
+  // intentText — где искать намерение, если текст смешанный: в сниппете
+  // выдачи вопрос идёт вперемешку с чужими ответами («если тебе нужен бот…»).
+  if (lead.kind === 'post' && (PROMO.test(text) || !hasIntent(lead.intentText ?? text))) return null;
   const services = matchServices(text);
   if (!services.length) return null;
   const budget = lead.budget ?? parseBudget(text);

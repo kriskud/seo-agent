@@ -149,3 +149,14 @@ test('state: интервал, метка из будущего, сохране�
   assert.ok(again.due('reddit', 60)); // часы ушли назад
   assert.ok(again.due('kwork'));
 });
+
+test('qualify поиска: намерение берётся из заголовка, а не из чужих ответов в сниппете', () => {
+  const cfg = { minBudgetRub: 8000, minBudgetUsd: 150 };
+  const [junk, real] = parseSearchResults([
+    { url: 'https://otvet.mail.ru/question/1', title: 'Подскажите приколы про котов - user | Ответы Mail', snippet: 'Если тебе нужен телеграм бот, ищи разработчика.' },
+    { url: 'https://otvet.mail.ru/question/2', title: 'Нужен чат-бот для телеграмм-чата - user | Ответы Mail', snippet: '' },
+  ], { query: 'q' });
+  assert.equal(junk.intentText, 'Подскажите приколы про котов - user');
+  assert.equal(qualify(junk, cfg), null);
+  assert.ok(qualify(real, cfg));
+});

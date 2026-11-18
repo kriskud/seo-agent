@@ -73,3 +73,10 @@ test('qualify: риторические заголовки статей — не
   assert.equal(qualify(post('Кому и зачем нужен чат-бот? (Спойлер: всем)'), config), null);
   assert.equal(qualify(post('Когда бизнесу реально нужен чат-бот (а когда можно и без него)?'), config), null);
 });
+
+test('qualify: ищут готовых ботов или проводят опрос — не лид', () => {
+  assert.equal(qualify(post('Подскажите ботов в Тг, что общаются матом'), config), null);
+  assert.equal(qualify(post('Владельцы малого бизнеса, как сильно вам нужны чат боты для адаптации?'), config), null);
+  assert.ok(qualify(post('Посоветуйте разработчиков ботов для записи клиентов'), config));
+  assert.ok(qualify(post('Нужен чат-бот для телеграмм-чата'), config));
+});
