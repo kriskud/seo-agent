@@ -12,10 +12,13 @@ export function unicodeRegex(source, flags = 'iu') {
   return new RegExp(source.replaceAll('\\b', `(?:(?<!${WORD})|(?!${WORD}))`), flags);
 }
 
+// Конструкторы онлайн-записи: недовольные ими — лиды на CosmoDesk/BodyTime.
+const BOOKING_TOOLS = '(yclients|y ?clients|йклаентс|иклаентс|dikidi|дикиди|altegio|sonline|onlinezapis)';
+
 export const SERVICES = {
   bot: unicodeRegex('(телеграм|telegram|\\bтг\\b|\\btg\\b)[\\s-]*(бот|bot)|чат[- ]?бот|chat ?bot|(разработчик|программист)[а-я]* (телеграм-?|тг-?|чат-?)?бот(а|ов)\\b|(сделать|написать|создать|сделает|напишет) (телеграм-?|тг-?|чат-?)?бот(а)?\\b|\\bбот[а-я]*\\b.{0,30}\\b(тг|телеграм|telegram|записи|заявок|оплат)|telegram bot|whatsapp bot|\\bbot\\b.{0,25}(telegram|booking|orders|payments)'),
   miniApp: unicodeRegex('mini ?app|мини[- ]?ап(п|ы|а|е|ов)?\\b|web ?app.{0,20}(telegram|телеграм)|приложени[а-я]* (в|для|внутри) (телеграм|telegram|тг)|telegram web app'),
-  crm: unicodeRegex('\\bcrm\\b|\\bсрм\\b|\\bцрм\\b|уч[её]т(а|ом)? (клиентов|заявок|записей)|онлайн-?запис|запис[ьи] клиентов|личн(ый|ого) кабинет|booking (system|software|app|platform)|appointment (booking|scheduling|system)|scheduling (app|system|software)|client (management|database)'),
+  crm: unicodeRegex(`${BOOKING_TOOLS}|\\bcrm\\b|\\bсрм\\b|\\bцрм\\b|уч[её]т(а|ом)? (клиентов|заявок|записей)|онлайн-?запис|запис[ьи] клиентов|личн(ый|ого) кабинет|booking (system|software|app|platform)|appointment (booking|scheduling|system)|scheduling (app|system|software)|client (management|database)`),
   saas: unicodeRegex('\\bsaas\\b|сервис (по|с) подписк|подписочн(ый|ого) сервис|subscription (app|service|platform)|web app(lication)?|internal tool|dashboard for'),
   site: unicodeRegex('лендинг|landing ?page|сайт-?визитк|одностраничн|сайт для (услуг|компании|мастера|салона|студии|эксперта|курса)|(создать|сделать|разработ[а-я]*|нужен|требуется) (сайт|лендинг)|(сайт|лендинг) (с нуля|под ключ)|one[- ]pager|website for'),
 };
@@ -36,6 +39,12 @@ const SEEK = '(ищу|ищем|ищет|ищется|нужен|нужна|ну�
 const OUR_TARGET = '(разработчик|программист|девелопер|developer|freelancer|contractor|engineer|\\bбот\\b|\\bбота\\b|\\bbot\\b|\\bcrm\\b|\\bсрм\\b|mini ?app|мини[- ]?ап|сайт|лендинг|landing|приложени|автоматизаци|web app|подрядчик|исполнител|студи[юя] разработки|команд[уы] разработки|чат-?бот|онлайн-?запис|личный кабинет)';
 const NEAR = '[^.!?\\n]{0,60}';
 
+/**
+ * Хотят уйти с конструктора записи: «альтернатива yclients», «dikidi подорожал».
+ * Это не заказ разработки, а повод вручную ответить про CosmoDesk/BodyTime.
+ */
+export const SWITCHING = unicodeRegex(`(альтернатив[а-я]*|аналог[а-я]*|чем заменить|замен[а-я]* для|подорожал[а-я]*|дорого|дороговат|уйти с|ушли с|переехать с|переходить с|alternative to|cheaper than)${NEAR}${BOOKING_TOOLS}|${BOOKING_TOOLS}${NEAR}(альтернатив[а-я]*|аналог[а-я]*|подорожал[а-я]*|дорого|дороговат|не устраивает|надоел)`);
+
 /** Кто-то ищет исполнителя именно под наши услуги. */
 export const SEEKING = unicodeRegex(`\\b${SEEK}\\b${NEAR}${OUR_TARGET}`);
 
@@ -53,7 +62,7 @@ export function matchServices(text) {
 
 /** Текст похож на запрос исполнителя, а не на самопрезентацию фрилансера. */
 export function hasIntent(text) {
-  return SEEKING.test(text) && !OFFERING.test(text) && !NOT_OUR_ROLE.test(text);
+  return (SEEKING.test(text) || SWITCHING.test(text)) && !OFFERING.test(text) && !NOT_OUR_ROLE.test(text);
 }
 
 /**

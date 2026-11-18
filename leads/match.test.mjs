@@ -80,3 +80,10 @@ test('qualify: ищут готовых ботов или проводят опр
   assert.ok(qualify(post('Посоветуйте разработчиков ботов для записи клиентов'), config));
   assert.ok(qualify(post('Нужен чат-бот для телеграмм-чата'), config));
 });
+
+test('qualify: хотят уйти с конструктора записи — лид на CosmoDesk/BodyTime', () => {
+  assert.deepEqual(qualify(post('Посоветуйте альтернативу YCLIENTS для мастера маникюра'), config).services, ['crm']);
+  assert.ok(qualify(post('Dikidi подорожал, куда переезжать?'), config));
+  assert.equal(qualify(post('Пользуюсь yclients третий год, всё отлично'), config), null);
+  assert.equal(qualify(post('Внедряем YCLIENTS под ключ от 20 000 ₽, ищете альтернативу Excel?'), config), null);
+});
