@@ -1,10 +1,16 @@
-// Источники заказов. Каждый возвращает [{ id, source, url, title, text, budget, createdAt }].
+// Источники заказов. Каждый возвращает
+// [{ id, source, url, title, text, budget, createdAt, kind }], где kind:
+//   'order' — формат площадки уже гарантирует, что это заказ (биржи, [Hiring]);
+//   'post'  — свободный текст, нужен фильтр намерения (каналы, выдача, HN).
 // Ошибка одного источника не роняет остальные — её видно в сводке.
 import { UA } from '../lib.mjs';
+import { telegram } from './telegram.mjs';
+import { hn } from './hn.mjs';
+import { websearch } from './search/source.mjs';
 
 const MSK_OFFSET_H = 3;
 
-async function fetchText(url) {
+export async function fetchText(url) {
   const res = await fetch(url, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(20000) });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return res.text();
@@ -44,6 +50,7 @@ export function parseKwork(html) {
     title: decode(w.name ?? ''),
     text: decode(w.description ?? ''),
     budget: Number(w.priceLimit) > 0 ? { amount: Number(w.priceLimit), currency: 'RUB' } : null,
+    kind: 'order',
     // date_create — московское время без зоны
     createdAt: w.date_create
       ? new Date(Date.parse(w.date_create.replace(' ', 'T') + 'Z') - MSK_OFFSET_H * 3600e3).toISOString()
@@ -71,6 +78,7 @@ export function parseFlru(xml) {
       text: decode(tag(it, 'description')),
       budget: null,
       createdAt: new Date(decode(tag(it, 'pubDate'))).toISOString(),
+      kind: 'order',
     };
   });
 }
@@ -92,14 +100,28 @@ export function parseReddit(xml, requireTag) {
       text: decode(tag(e, 'content')).slice(0, 1500),
       budget: null,
       createdAt: new Date(decode(tag(e, 'updated'))).toISOString(),
+      // Тег [Hiring] — это уже заказ; без него пост надо проверять на намерение.
+      kind: requireTag ? 'order' : 'post',
     }))
     .filter((x) => !requireTag || new RegExp(`\\[${requireTag}\\]`, 'i').test(x.title));
 }
 
-export async function reddit({ subreddits, requireTag }) {
+export async function reddit({ subreddits, requireTag, warn = console.warn }) {
   const out = [];
-  for (const s of subreddits) out.push(...parseReddit(await fetchText(`https://www.reddit.com/r/${s}/new.rss`), requireTag));
+  for (const s of subreddits) {
+    const url = `https://www.reddit.com/r/${s}/new.rss`;
+    const res = await fetch(url, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(20000) });
+    // Reddit душит датацентровые IP: 429 и пустая 404 вместо ленты. Это не
+    // повод падать — ждём следующего окна (minIntervalMinutes в конфиге).
+    if (res.status === 429 || res.status === 404) {
+      warn(`[leads] ${url}: HTTP ${res.status} — Reddit ограничил запросы, пропускаю`);
+      await res.body?.cancel();
+      continue;
+    }
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    out.push(...parseReddit(await res.text(), requireTag));
+  }
   return out;
 }
 
-export const SOURCES = { kwork, flru, reddit };
+export const SOURCES = { kwork, flru, reddit, telegram, hn, websearch };

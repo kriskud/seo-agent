@@ -1,11 +1,91 @@
 {
+  "_comment": "enabled:false — источник не опрашивается (код остаётся). notify:false — собирается в отчёт без Telegram. Kwork/FL.ru выключены: демпинг и огромная конкуренция. Telegram-каналы выключены: за 14 дней 16 «заказных» каналов дали 0 подходящих сообщений — вакансии в штат, дизайн, дайджесты. См. leads/README.md.",
   "freshnessDays": 3,
   "minBudgetRub": 8000,
   "minBudgetUsd": 150,
   "maxPerNotification": 10,
   "sources": {
-    "kwork": { "categories": [41, 37, 39, 38] },
-    "flru": { "feeds": ["https://www.fl.ru/rss/all.xml"] },
-    "reddit": { "subreddits": ["forhire"], "requireTag": "hiring" }
+    "kwork": {
+      "enabled": false,
+      "notify": false,
+      "categories": [
+        41,
+        37,
+        39,
+        38
+      ]
+    },
+    "flru": {
+      "enabled": false,
+      "notify": false,
+      "feeds": [
+        "https://www.fl.ru/rss/all.xml"
+      ]
+    },
+    "reddit": {
+      "minIntervalMinutes": 60,
+      "subreddits": [
+        "forhire"
+      ],
+      "requireTag": "hiring"
+    },
+    "telegram": {
+      "enabled": false,
+      "minIntervalMinutes": 30,
+      "minUniqueRatio": 0.5,
+      "channels": [
+        "zakaz_design",
+        "designodromo",
+        "designbirzha",
+        "allgigs",
+        "normrabota",
+        "zapwork",
+        "worklis",
+        "naudalenkebro",
+        "theyseeku",
+        "vdhl_good",
+        "Getitrussia",
+        "freelance_gigs",
+        "over100",
+        "freelancetaverna",
+        "dnative_job",
+        "smm_leads"
+      ]
+    },
+    "hn": {
+      "minIntervalMinutes": 180,
+      "freshnessDays": 14,
+      "hitsPerPage": 40,
+      "queries": [
+        "SEEKING FREELANCER"
+      ]
+    },
+    "websearch": {
+      "minIntervalMinutes": 180,
+      "perRun": 2,
+      "searchFreshnessDays": 60,
+      "queries": [
+        "\"ищу разработчика бота\"",
+        "\"ищу разработчика телеграм бота\"",
+        "\"кто сделает телеграм бота\"",
+        "\"посоветуйте разработчика бота\"",
+        "\"нужен чат-бот для записи\"",
+        "\"нужен бот для записи клиентов\"",
+        "\"ищу разработчика mini app\"",
+        "\"нужен разработчик mini app\"",
+        "\"ищу разработчика crm\"",
+        "\"нужна crm для салона\"",
+        "\"посоветуйте crm для салона красоты\"",
+        "\"нужна система записи клиентов\"",
+        "\"ищу разработчика лендинга\"",
+        "\"ищу разработчика сайта\"",
+        "\"нужен разработчик телеграм ботов\"",
+        "\"кто может сделать бота\"",
+        "\"посоветуйте программу для записи клиентов\"",
+        "\"посоветуйте приложение для записи клиентов\"",
+        "\"кто делал бота для записи\"",
+        "\"нужен бот для салона\""
+      ]
+    }
   }
 }

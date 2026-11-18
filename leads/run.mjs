@@ -1,15 +1,22 @@
-// Поиск заказов для iamonline: биржи (Kwork, FL.ru) и Reddit r/forhire →
-// фильтр под услуги и бюджет → новые заказы в Telegram и в reports/leads-latest.md.
-// Запуск: node leads/run.mjs [--dry-run] [--verbose]. По расписанию — leads/cron.sh.
+// Поиск заказов для iamonline: биржи (Kwork, FL.ru), Reddit, публичные
+// Telegram-каналы, Hacker News и вопросы с намерением в поисковой выдаче →
+// фильтр под услуги, бюджет и намерение → новые заказы в Telegram
+// и в reports/leads-latest.md.
+// Запуск: node leads/run.mjs [--dry-run] [--verbose] [--force] [--only=источник].
+// --force игнорирует minIntervalMinutes (дневной бюджет Яндекса всё равно действует).
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, loadEnv, today } from '../lib.mjs';
 import { SOURCES } from './sources.mjs';
 import { qualify } from './match.mjs';
+import { createState } from './state.mjs';
 
-const args = new Set(process.argv.slice(2));
-const DRY = args.has('--dry-run');
-const VERBOSE = args.has('--verbose');
+const args = process.argv.slice(2);
+const flags = new Set(args.filter((a) => !a.startsWith('--only=')));
+const ONLY = args.find((a) => a.startsWith('--only='))?.slice(7).split(',').filter(Boolean);
+const DRY = flags.has('--dry-run');
+const VERBOSE = flags.has('--verbose');
+const FORCE = flags.has('--force');
 const DIR = join(ROOT, 'data', 'leads');
 const SEEN = join(DIR, 'seen.json');
 const SEEN_TTL_DAYS = 60;
@@ -20,7 +27,8 @@ export function formatLead(l) {
   const money = l.budget ? `${l.budget.amount.toLocaleString('ru-RU')} ${l.budget.currency === 'USD' ? '$' : '₽'}` : 'бюджет не указан';
   const what = l.services.map((s) => SERVICE_LABEL[s]).join(', ');
   const text = l.text.length > 280 ? `${l.text.slice(0, 280)}…` : l.text;
-  return `${l.source} · ${what} · ${money}\n${l.title}\n${text}\n${l.url}`;
+  const head = [l.source, what, money, l.context].filter(Boolean).join(' · ');
+  return `${head}\n${l.title}\n${text}\n${l.url}`;
 }
 
 async function notify(env, leads, max) {
@@ -60,21 +68,34 @@ export async function main() {
   mkdirSync(DIR, { recursive: true });
   const firstRun = !existsSync(SEEN);
   const seen = firstRun ? {} : JSON.parse(readFileSync(SEEN, 'utf8'));
-  const since = Date.now() - config.freshnessDays * 864e5;
+  // Окно свежести можно переопределить для источника: в ежемесячном треде HN
+  // заказы висят неделями, а на бирже заказ старше трёх дней уже разобрали.
+  const sinceFor = (origin) => Date.now() - (config.sources[origin]?.freshnessDays ?? config.freshnessDays) * 864e5;
+  const state = createState();
+  const warn = (m) => { if (VERBOSE) console.warn(m); };
 
   const found = [];
   const summary = [];
+  // Источники, уведомления от которых уходят в Telegram. Биржи (Kwork, FL.ru)
+  // шумят и демпингуют — они собираются в отчёт, но в чат не пишут.
+  const notifyFrom = new Set();
   for (const [name, opts] of Object.entries(config.sources)) {
+    if (ONLY && !ONLY.includes(name)) continue;
+    if (opts.enabled === false) { summary.push(`${name}: выключен`); continue; }
+    if (opts.notify !== false) notifyFrom.add(name);
+    // Минимальный интервал: Reddit отдаёт 429, Яндекс Поиск стоит денег.
+    if (!FORCE && !state.due(name, opts.minIntervalMinutes)) { summary.push(`${name}: пауза`); continue; }
+    if (!DRY) state.mark(name); // Отмечаем попытку, а не успех: иначе ошибка = опрос каждые 20 минут.
     try {
-      const items = await SOURCES[name](opts);
+      const items = await SOURCES[name]({ ...opts, warn }, { state, warn });
       summary.push(`${name}: ${items.length}`);
-      found.push(...items);
+      for (const item of items) found.push({ ...item, origin: name });
     } catch (e) {
       summary.push(`${name}: ошибка (${e.message})`);
     }
   }
 
-  const fresh = found.filter((l) => !l.createdAt || Date.parse(l.createdAt) >= since);
+  const fresh = found.filter((l) => !l.createdAt || Date.parse(l.createdAt) >= sinceFor(l.origin));
   const qualified = fresh.map((l) => qualify(l, config)).filter(Boolean);
   const fresh_new = qualified.filter((l) => !seen[l.id]);
   if (VERBOSE) for (const l of qualified) console.log(`${seen[l.id] ? '  (было)' : '  NEW'} ${l.source} ${l.services.join(',')} ${l.title}`);
@@ -88,8 +109,9 @@ export async function main() {
     writeFileSync(SEEN, JSON.stringify(seen));
     if (fresh_new.length) appendFileSync(join(DIR, `${now}.jsonl`), fresh_new.map((l) => JSON.stringify(l)).join('\n') + '\n');
     writeDigest();
+    state.save();
     // Первый прогон только запоминает уже висящие заказы, чтобы не завалить чат.
-    if (!firstRun) sent = await notify(env, fresh_new, config.maxPerNotification);
+    if (!firstRun) sent = await notify(env, fresh_new.filter((l) => notifyFrom.has(l.origin)), config.maxPerNotification);
   }
   console.log(`[leads] ${summary.join(', ')}; свежих ${fresh.length}, подходят ${qualified.length}, новых ${fresh_new.length}${sent ? ', отправлено в Telegram' : ''}${firstRun ? ' (первый прогон — без уведомлений)' : ''}`);
 }
